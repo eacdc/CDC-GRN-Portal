@@ -348,7 +348,6 @@
             <td>${sp.orderQty ?? '—'}</td>
             <td>${sp.gpnQty ?? '—'}</td>
             <td>${sp.deliveredThisVoucher ?? '—'}</td>
-            <td>${sp.deliveredThisVoucher ?? '—'}</td>
             <td>${sp.deliveredTotal ?? '—'}</td>
             <td>${sp.cartonCount ?? '—'}</td>
           `;
@@ -410,8 +409,7 @@
               <td>${sp.jobName ?? '—'}</td>
               <td>${sp.orderQty ?? '—'}</td>
               <td>${sp.gpnQty ?? '—'}</td>
-              <td>${sp.deliveredThisVoucher ?? '—'}</td>
-              <td>${sp.deliveredThisVoucher ?? '—'}</td>
+            <td>${sp.deliveredThisVoucher ?? '—'}</td>
               <td>${sp.deliveredTotal ?? '—'}</td>
               <td>${sp.cartonCount ?? '—'}</td>
             `;
@@ -445,7 +443,6 @@
       for (let i = 0; i < 10; i++) {
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td></td>
           <td></td>
           <td></td>
           <td></td>
