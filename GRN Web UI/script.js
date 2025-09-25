@@ -25,6 +25,46 @@
     }
   }
 
+  // Siren sound for error/fail notifications (works after any user interaction)
+  function playSiren() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!window.__grnAudioCtx) {
+        window.__grnAudioCtx = new AudioCtx();
+      }
+      const ctx = window.__grnAudioCtx;
+      // Some mobile browsers require resume after gesture
+      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+
+      // Sweep frequency up and down quickly to mimic a siren
+      const start = ctx.currentTime;
+      osc.frequency.setValueAtTime(600, start);
+      osc.frequency.linearRampToValueAtTime(1200, start + 0.3);
+      osc.frequency.linearRampToValueAtTime(700, start + 0.6);
+      osc.frequency.linearRampToValueAtTime(1100, start + 0.9);
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      // Fade out and stop
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.1);
+      osc.stop(start + 1.2);
+    } catch (_) {
+      // Ignore audio errors
+    }
+  }
+
+  function alertWithSiren(message) {
+    try { playSiren(); } catch (_) {}
+    alert(message);
+  }
+
   // Elements
   const loginSection = document.getElementById('login-section');
   const postLoginSection = document.getElementById('post-login-section');
@@ -220,7 +260,7 @@
         }
         const data = await res.json();
         if (!data || data.status !== true) {
-          alert(data?.error || 'Failed to initiate challan');
+          alertWithSiren(data?.error || 'Failed to initiate challan');
           return;
         }
         // Fill challan form
@@ -241,9 +281,9 @@
       } catch (e) {
         try {
           const parsed = JSON.parse(e.message);
-          alert(parsed.error || 'Failed to initiate challan');
+          alertWithSiren(parsed.error || 'Failed to initiate challan');
         } catch(_) {
-          alert(String(e.message || e));
+          alertWithSiren(String(e.message || e));
         }
       }
     });
@@ -321,7 +361,7 @@
         const data = await res.json();
         if (!data || data.status !== true) {
           // Show specific message if provided by backend
-          alert(data?.error || 'Failed to save delivery note');
+          alertWithSiren(data?.error || 'Failed to save delivery note');
           return;
         }
 
@@ -359,7 +399,7 @@
           }
         }
       } catch (e) {
-        alert(String(e.message || e));
+        alertWithSiren(String(e.message || e));
       }
     });
   }
@@ -399,7 +439,7 @@
             throw new Error(t || 'Failed to update delivery note');
           }
           const data = await res.json();
-          if (!data || data.status !== true) { alert(data?.error || 'Failed to update delivery note'); return; }
+          if (!data || data.status !== true) { alertWithSiren(data?.error || 'Failed to update delivery note'); return; }
           const sp = data.sp || {};
 
           if (deliveryTableBody) {
@@ -419,7 +459,7 @@
           if (confBarcode) confBarcode.value = '';
           if (confBarcode) confBarcode.focus();
     } catch (e) {
-      alert(String(e.message || e));
+      alertWithSiren(String(e.message || e));
     }
   }
 
