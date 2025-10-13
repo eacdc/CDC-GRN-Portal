@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/machine.dart';
 import '../models/process.dart';
+import '../models/machine_status.dart';
+import '../models/api_response.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 import '../models/login_result.dart';
@@ -246,7 +248,11 @@ class AppProvider extends ChangeNotifier {
       _setError('User not identified');
       return ProcessOperationResult.failure();
     }
-    final int employeeIdToSend = currentLedgerId ?? employeeId;
+    if (_currentLedgerId == null) {
+      _setError('Ledger ID not available');
+      return ProcessOperationResult.failure();
+    }
+    final int employeeIdToSend = _currentLedgerId!;
 
     _isLoading = true;
     try {
@@ -312,8 +318,12 @@ class AppProvider extends ChangeNotifier {
       _setError('User not identified');
       return ProcessOperationResult.failure();
     }
+    if (_currentLedgerId == null) {
+      _setError('Ledger ID not available');
+      return ProcessOperationResult.failure();
+    }
 
-    final int employeeIdToSend = currentLedgerId ?? employeeId;
+    final int employeeIdToSend = _currentLedgerId!;
 
     // Step 1: Store input values in variable and set submitting state
     _completionInputs = {
@@ -411,8 +421,12 @@ class AppProvider extends ChangeNotifier {
       _setError('User not identified');
       return ProcessOperationResult.failure();
     }
+    if (_currentLedgerId == null) {
+      _setError('Ledger ID not available');
+      return ProcessOperationResult.failure();
+    }
 
-    final int employeeIdToSend = currentLedgerId ?? employeeId;
+    final int employeeIdToSend = _currentLedgerId!;
 
     _isLoading = true;
     try {
@@ -464,17 +478,35 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
-  bool isProcessRunning(int processId, int jobBookingJobCardContentsId) {
+  bool isProcessRunning(int processId, int jobBookingJobCardContentsId, {String? formNo}) {
     // Find the process in the current processes list
-    final process = _findProcess(processId, jobBookingJobCardContentsId);
+    final process = _findProcess(processId, jobBookingJobCardContentsId, formNo: formNo);
     
     // Only consider process as running if CurrentStatus is "Running"
-    return process?.currentStatus?.toLowerCase() == 'running';
+    // Trim whitespace to handle any extra spaces from the API
+    final status = process?.currentStatus?.trim().toLowerCase();
+    print('[AppProvider] isProcessRunning check - ProcessID: $processId, JobBookingID: $jobBookingJobCardContentsId, FormNo: ${formNo ?? process?.formNo}, Status: "${process?.currentStatus}", Trimmed: "$status", IsRunning: ${status == 'running'}');
+    return status == 'running';
   }
 
   DateTime? getProcessStartTime(int processId, int jobBookingJobCardContentsId) {
     final processKey = '${processId}_${jobBookingJobCardContentsId}';
     return _runningProcesses[processKey];
+  }
+
+  // Register an already-running process (for "View Status" navigation)
+  void registerRunningProcess(int processId, int jobBookingJobCardContentsId) {
+    final processKey = '${processId}_${jobBookingJobCardContentsId}';
+    
+    // Only register if not already tracked and process is actually running
+    if (!_runningProcesses.containsKey(processKey)) {
+      final process = _findProcess(processId, jobBookingJobCardContentsId);
+      if (process?.currentStatus?.toLowerCase() == 'running') {
+        // Use current time as start time since we don't know the actual start time
+        _runningProcesses[processKey] = DateTime.now();
+        notifyListeners();
+      }
+    }
   }
 
   // Helper method to check if a process status indicates completion
@@ -484,12 +516,22 @@ class AppProvider extends ChangeNotifier {
     return status == 'complete' || status == 'part complete';
   }
 
-  // Helper method to find a process by ID
-  Process? _findProcess(int processId, int jobBookingJobCardContentsId) {
+  // Helper method to find a process by ID and optionally by FormNo
+  Process? _findProcess(int processId, int jobBookingJobCardContentsId, {String? formNo}) {
     try {
-      return _processes.firstWhere(
-        (p) => p.processId == processId && p.jobBookingJobcardContentsId == jobBookingJobCardContentsId,
-      );
+      if (formNo != null) {
+        // If FormNo is provided, use it as the unique identifier since processId + jobBookingId might not be unique
+        return _processes.firstWhere(
+          (p) => p.processId == processId && 
+                 p.jobBookingJobcardContentsId == jobBookingJobCardContentsId &&
+                 p.formNo == formNo,
+        );
+      } else {
+        // Fallback to old logic if FormNo is not provided
+        return _processes.firstWhere(
+          (p) => p.processId == processId && p.jobBookingJobcardContentsId == jobBookingJobCardContentsId,
+        );
+      }
     } catch (e) {
       return null; // Process not found
     }
@@ -555,7 +597,7 @@ class AppProvider extends ChangeNotifier {
       if (loginData != null) {
         _currentUsername = loginData['username'];
         _currentUserId = loginData['userId'];
-        _selectedDatabase = loginData['database'] ?? 'KOL'; // Default to KOL if not set
+        _selectedDatabase = loginData['database']; // No default - require explicit database selection
         _machines = (loginData['machines'] as List)
             .map((json) => Machine.fromJson(json))
             .toList();
@@ -577,6 +619,38 @@ class AppProvider extends ChangeNotifier {
     } catch (e) {
       _setError('Auto-login error: ${e.toString()}');
       return false;
+    }
+  }
+
+  // Get latest machine status per machine
+  Future<ApiResponse<List<MachineStatus>>> getLatestMachineStatusPerMachine() async {
+    try {
+      final response = await _apiService.getLatestMachineStatusPerMachine(
+        database: _selectedDatabase,
+      );
+      
+      if (response.status && response.data != null) {
+        final machineStatuses = (response.data as List)
+            .map((json) => MachineStatus.fromJson(json))
+            .toList();
+        
+        return ApiResponse<List<MachineStatus>>(
+          status: true,
+          data: machineStatuses,
+        );
+      } else {
+        return ApiResponse<List<MachineStatus>>(
+          status: false,
+          data: null,
+          error: response.error ?? 'Failed to load machine statuses',
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<MachineStatus>>(
+        status: false,
+        data: null,
+        error: 'Error loading machine statuses: $e',
+      );
     }
   }
 

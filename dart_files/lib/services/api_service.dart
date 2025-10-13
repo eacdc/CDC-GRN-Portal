@@ -377,6 +377,53 @@ class ApiService {
     }
   }
 
+  // Get latest machine status per machine
+  Future<ApiResponse<List<Map<String, dynamic>>>> getLatestMachineStatusPerMachine({
+    String? database,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/machine-status/latest');
+      
+      final Map<String, dynamic> requestBody = {};
+      if (database != null) {
+        requestBody['database'] = database;
+      }
+      
+      final response = await _client.post(
+        uri,
+        headers: _headers,
+        body: json.encode(requestBody),
+      );
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        if (jsonData['status'] == true) {
+          final List<dynamic> data = jsonData['data'] ?? [];
+          return ApiResponse<List<Map<String, dynamic>>>(
+            status: true,
+            data: data.cast<Map<String, dynamic>>(),
+          );
+        } else {
+          return ApiResponse<List<Map<String, dynamic>>>(
+            status: false,
+            error: jsonData['error'] ?? 'Failed to get machine statuses',
+          );
+        }
+      } else {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        return ApiResponse<List<Map<String, dynamic>>>(
+          status: false,
+          error: errorData['error'] ?? 'Failed to get machine statuses',
+        );
+      }
+    } catch (e) {
+      return ApiResponse<List<Map<String, dynamic>>>(
+        status: false,
+        error: 'Network error: ${e.toString()}',
+      );
+    }
+  }
+
   void dispose() {
     _client.close();
   }

@@ -48,7 +48,7 @@ class StorageService {
       'userId': userId,
       'loginTime': loginTime,
       'machines': machines,
-      'database': database ?? 'KOL', // Default to KOL if not set
+      'database': database, // Require explicit database - no default
     };
   }
 

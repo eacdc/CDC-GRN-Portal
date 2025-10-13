@@ -37,6 +37,15 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appProvider = Provider.of<AppProvider>(context, listen: false);
       appProvider.setContext(context);
+      
+      // Register this process as running if it's not already tracked
+      // This ensures "View Status" navigation works the same as "Start" navigation
+      if (widget.process.processId != null) {
+        appProvider.registerRunningProcess(
+          widget.process.processId!,
+          widget.process.jobBookingJobcardContentsId,
+        );
+      }
     });
   }
 
@@ -106,7 +115,30 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
   Widget build(BuildContext context) {
     final String formNumber = _extractFormNumber(widget.process.formNo);
     
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        // Always block back navigation from running process screen
+        // Show a dialog to confirm if user wants to cancel the process
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Cancel Process?'),
+            content: const Text('Are you sure you want to cancel this running process?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('No'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Yes, Cancel'),
+              ),
+            ],
+          ),
+        );
+        return shouldPop ?? false;
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Running Process'),
         automaticallyImplyLeading: false, // Remove back button
@@ -117,6 +149,7 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
           final isRunning = appProvider.isProcessRunning(
             widget.process.processId ?? 0,
             widget.process.jobBookingJobcardContentsId,
+            formNo: widget.process.formNo,
           );
           final startTime = appProvider.getProcessStartTime(
             widget.process.processId ?? 0,
@@ -124,7 +157,7 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
           );
           
           // Debug info
-          print('[RunningProcessScreen] isRunning: $isRunning, startTime: $startTime, currentStatus: ${widget.process.currentStatus}');
+          print('[RunningProcessScreen] FormNo: ${widget.process.formNo}, isRunning: $isRunning, startTime: $startTime, currentStatus: ${widget.process.currentStatus}');
 
           // Automatic navigation disabled - we now handle navigation manually in completion/cancellation
           // This prevents conflicts between automatic and manual navigation
@@ -204,9 +237,9 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Cancel button - enabled if we have a start time
+                                  // Cancel button - enabled if process is running OR has start time
                                   ElevatedButton.icon(
-                                    onPressed: startTime != null ? () async {
+                                    onPressed: (isRunning || startTime != null) ? () async {
                                       final int employeeId = appProvider.currentLedgerId ?? appProvider.currentUserId ?? 0;
                                       final int processId = widget.process.processId ?? 0;
                                       final result = await appProvider.cancelProcess(
@@ -223,10 +256,14 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                                             const SnackBar(content: Text('Production cancelled')),
                                           );
                                           
-                                          // Navigate back to process list screen immediately
+                                          // Navigate back to process details screen (search screen) directly
                                           WidgetsBinding.instance.addPostFrameCallback((_) {
                                             if (mounted) {
-                                              Navigator.of(context).pop(); // Go back to process list screen
+                                              Navigator.pushAndRemoveUntil(
+                                                context,
+                                                MaterialPageRoute(builder: (context) => const ProcessDetailsScreen()),
+                                                (route) => route.isFirst,
+                                              );
                                             }
                                           });
                                         }
@@ -244,9 +281,9 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                                     label: const Text('Cancel'),
                                   ),
                                   const SizedBox(width: 8),
-                                  // Complete button - enabled if we have a start time
+                                  // Complete button - enabled if process is running OR has start time
                                   ElevatedButton.icon(
-                                    onPressed: startTime != null ? () {
+                                    onPressed: (isRunning || startTime != null) ? () {
                                       setState(() {
                                         _showCompleteForm = !_showCompleteForm;
                                       });
@@ -263,8 +300,9 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                                   ),
                                 ],
                               ),
-                            ],
+                              ],
                           ),
+                          
                           
                           const SizedBox(height: 16),
                           
@@ -392,8 +430,11 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                   
                   const SizedBox(height: 20),
                   
-                  // Complete production form below timer - show if form is toggled and we have a start time
-                  if (_showCompleteForm && startTime != null) ...[
+                  
+                  
+                  
+                  // Conditional form rendering
+                  if (_showCompleteForm)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
@@ -562,14 +603,14 @@ class _RunningProcessScreenState extends State<RunningProcessScreen> {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ],
             ),
           );
         },
       ),
-    );
+    ),
+  );
   }
 }
 

@@ -101,12 +101,17 @@ class _ProcessListScreenState extends State<ProcessListScreen> {
 
   // Helper method to get running processes
   List<Process> _getRunningProcesses(List<Process> processes, AppProvider appProvider) {
-    return processes.where((process) => 
-      appProvider.isProcessRunning(
+    final running = processes.where((process) {
+      final isRunning = appProvider.isProcessRunning(
         process.processId ?? 0,
         process.jobBookingJobcardContentsId,
-      )
-    ).toList();
+        formNo: process.formNo,
+      );
+      print('[ProcessListScreen] Process ${process.processName} (ID: ${process.processId}, FormNo: ${process.formNo}) - Status: "${process.currentStatus}" - IsRunning: $isRunning');
+      return isRunning;
+    }).toList();
+    print('[ProcessListScreen] Total processes: ${processes.length}, Running: ${running.length}');
+    return running;
   }
 
   // Helper method to get non-running processes
@@ -115,6 +120,7 @@ class _ProcessListScreenState extends State<ProcessListScreen> {
       !appProvider.isProcessRunning(
         process.processId ?? 0,
         process.jobBookingJobcardContentsId,
+        formNo: process.formNo,
       )
     ).toList();
   }
@@ -249,8 +255,17 @@ class _ProcessListScreenState extends State<ProcessListScreen> {
                   // Check if there are running processes
                   Builder(
                     builder: (context) {
+                      print('[ProcessListScreen] ========== FILTERING PROCESSES ==========');
+                      print('[ProcessListScreen] Total processes loaded: ${appProvider.processes.length}');
+                      for (var i = 0; i < appProvider.processes.length; i++) {
+                        final p = appProvider.processes[i];
+                        print('[ProcessListScreen] [$i] FormNo: ${p.formNo}, ProcessName: ${p.processName}, Status: "${p.currentStatus}"');
+                      }
+                      
                       final runningProcesses = _getRunningProcesses(appProvider.processes, appProvider);
                       final nonRunningProcesses = _getNonRunningProcesses(appProvider.processes, appProvider);
+                      
+                      print('[ProcessListScreen] ========== FILTERING COMPLETE ==========');
                       
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,14 +554,15 @@ class _ProcessCard extends StatelessWidget {
                      ),
                    ),
                    // Action buttons moved to top right
-                   Consumer<AppProvider>(
-                     builder: (context, appProvider, child) {
-                       final isRunning = appProvider.isProcessRunning(
-                         process.processId ?? 0,
-                         process.jobBookingJobcardContentsId,
-                       );
+                     Consumer<AppProvider>(
+                      builder: (context, appProvider, child) {
+                        final isRunning = appProvider.isProcessRunning(
+                          process.processId ?? 0,
+                          process.jobBookingJobcardContentsId,
+                          formNo: process.formNo,
+                        );
 
-                       if (!isRunning) {
+                        if (!isRunning) {
                         // Check if paper is issued
                         final double? piq = process.paperIssuedQty;
                         final bool isPaperIssued = piq != null && piq > 0;
@@ -612,116 +628,28 @@ class _ProcessCard extends StatelessWidget {
                            label: const Text('Start', style: TextStyle(fontSize: 12)),
                          );
                        } else {
-                         // Running state buttons
-                         return Row(
-                           mainAxisSize: MainAxisSize.min,
-                           children: [
-                             // Cancel button
-                             ElevatedButton.icon(
-                               onPressed: () async {
-                                 final int employeeId = appProvider.currentLedgerId ?? appProvider.currentUserId ?? 0;
-                                 final int processId = process.processId ?? 0;
-                                 final result = await appProvider.cancelProcess(
-                                   employeeId: employeeId,
-                                   processId: processId,
-                                   jobBookingJobCardContentsId: process.jobBookingJobcardContentsId,
-                                   jobCardFormNo: process.formNo,
+                         // Running state buttons -> replaced with a single "View Status" button
+                         return ElevatedButton.icon(
+                           onPressed: () {
+                             Navigator.push(
+                               context,
+                               MaterialPageRoute(
+                                 builder: (context) => RunningProcessScreen(
+                                   process: process,
                                    jobCardContentNo: jobCardContentNo,
-                                 );
-                                 if (result.success && context.mounted) {
-                                   if (!result.isStatusOnly) {
-                                     // Show success message
-                                     ScaffoldMessenger.of(context).showSnackBar(
-                                       const SnackBar(content: Text('Production cancelled')),
-                                     );
-                                     
-                                     // Check if there are remaining processes
-                                     if (!result.hasRemainingProcesses) {
-                                       // Navigate to empty processes page immediately
-                                       Navigator.pushReplacement(
-                                         context,
-                                         MaterialPageRoute(
-                                           builder: (context) => NoProcessesFoundScreen(
-                                             jobCardContentNo: jobCardContentNo,
-                                           ),
-                                         ),
-                                       );
-                                     }
-                                   }
-                                   // For status-only responses, dialog was already shown, just stay on current page
-                                 }
-                               },
-                               style: ElevatedButton.styleFrom(
-                                 backgroundColor: Colors.red,
-                                 foregroundColor: Colors.white,
-                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                 minimumSize: const Size(0, 0),
-                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                 ),
                                ),
-                               icon: const Icon(Icons.cancel, size: 12),
-                               label: const Text('Cancel', style: TextStyle(fontSize: 10)),
-                             ),
-                             const SizedBox(width: 4),
-                             // Complete button
-                             ElevatedButton.icon(
-                               onPressed: () async {
-                                 await showDialog<void>(
-                                   context: context,
-                                   builder: (context) => CompleteProductionDialog(
-                                     scheduleQty: process.scheduleQty,
-                                     onSubmit: (productionQty, wastageQty) async {
-                                       final int employeeId = appProvider.currentLedgerId ?? appProvider.currentUserId ?? 0;
-                                       final int processId = process.processId ?? 0;
-                                       final result = await appProvider.completeProcess(
-                                         employeeId: employeeId,
-                                         processId: processId,
-                                         jobBookingJobCardContentsId: process.jobBookingJobcardContentsId,
-                                         jobCardFormNo: process.formNo,
-                                         productionQty: productionQty,
-                                         wastageQty: wastageQty,
-                                         jobCardContentNo: jobCardContentNo,
-                                       );
-                                       
-                                       if (result.success && context.mounted) {
-                                         if (!result.isStatusOnly) {
-                                           // Show success message
-                                           ScaffoldMessenger.of(context).showSnackBar(
-                                             const SnackBar(content: Text('Production completed')),
-                                           );
-                                           
-                                           // Check if process was fully completed
-                                           if (result.isFullyCompleted) {
-                                             // Process was fully completed - go back to search screen
-                                             Navigator.popUntil(context, (route) => route.isFirst);
-                                           } else if (!appProvider.hasProcesses) {
-                                             // No processes remaining - show no processes screen
-                                             Navigator.pushReplacement(
-                                               context,
-                                               MaterialPageRoute(
-                                                 builder: (context) => NoProcessesFoundScreen(
-                                                   jobCardContentNo: jobCardContentNo,
-                                                 ),
-                                               ),
-                                             );
-                                           }
-                                           // If partially completed and processes remain, stay on current page
-                                         }
-                                       }
-                                     },
-                                   ),
-                                 );
-                               },
-                               style: ElevatedButton.styleFrom(
-                                 backgroundColor: Colors.green,
-                                 foregroundColor: Colors.white,
-                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                 minimumSize: const Size(0, 0),
-                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                               ),
-                               icon: const Icon(Icons.check_circle, size: 12),
-                               label: const Text('Complete', style: TextStyle(fontSize: 10)),
-                             ),
-                           ],
+                             );
+                           },
+                           style: ElevatedButton.styleFrom(
+                             backgroundColor: Colors.orange,
+                             foregroundColor: Colors.white,
+                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                             minimumSize: const Size(0, 0),
+                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                           ),
+                           icon: const Icon(Icons.visibility, size: 12),
+                           label: const Text('View Status', style: TextStyle(fontSize: 10)),
                          );
                        }
                      },

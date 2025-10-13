@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/machine.dart';
 import 'process_details_screen.dart';
+import 'running_machines_screen.dart';
 
 class MachineSelectionScreen extends StatefulWidget {
   const MachineSelectionScreen({super.key});
@@ -149,6 +150,26 @@ class _MachineSelectionScreenState extends State<MachineSelectionScreen> {
                             ],
                           ),
                         ),
+                        // Running Machines Button
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.play_circle_outline, color: Colors.white),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RunningMachinesScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Logout Button
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),

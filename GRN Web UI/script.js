@@ -514,29 +514,13 @@
     });
   }
 
-  // Restore session on load
-  (function restoreSession() {
+  // Auto-restore session disabled - users must login explicitly each time
+  // This prevents old sessions from being automatically restored with wrong database selection
+  (function clearOldSession() {
     try {
-      const raw = localStorage.getItem('grn_session');
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (!saved || !saved.username || !saved.selectedDatabase) return;
-      // Simulate swap with saved session data
-      session = saved;
-      if (infoUsername) infoUsername.textContent = saved.username;
-      if (infoDatabase) infoDatabase.textContent = saved.selectedDatabase;
-      if (loginSection) loginSection.classList.add('hidden');
-      if (postLoginSection) postLoginSection.classList.remove('hidden');
-      if (logoutBtn) logoutBtn.classList.remove('hidden');
-      // Also restore challan state if any
-      try {
-        const rawChallan = localStorage.getItem('grn_challan');
-        if (rawChallan) {
-          const savedChallan = JSON.parse(rawChallan);
-          if (clientNameInput) clientNameInput.value = savedChallan?.ledgerName || '';
-        }
-      } catch (_) {}
-      loadTransporters();
+      // Clear any old session data on page load to force fresh login
+      localStorage.removeItem('grn_session');
+      localStorage.removeItem('grn_challan');
     } catch (_) { /* ignore */ }
   })();
 
