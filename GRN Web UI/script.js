@@ -194,8 +194,12 @@
       username: username
     };
 
-    // Session is kept only in memory - not saved to localStorage
-    // This prevents conflicts when multiple users use the same browser/computer
+    // Save session to localStorage for persistence across page refreshes
+    try { 
+      localStorage.setItem('grn_session', JSON.stringify(session)); 
+    } catch(_) {
+      console.warn('Failed to save session to localStorage');
+    }
 
     if (infoUsername) infoUsername.textContent = username;
     if (infoDatabase) infoDatabase.textContent = data.selectedDatabase;
@@ -265,8 +269,19 @@
         }
         // Fill challan form
         if (clientNameInput) clientNameInput.value = data.ledgerName || '';
-        // Store barcode in session for later use (memory only)
+        // Store barcode in session for later use
         session.challanBarcode = Number(barcode);
+        
+        // Save challan state to localStorage for persistence
+        const challanState = {
+          barcode,
+          ledgerName: data.ledgerName || ''
+        };
+        try { 
+          localStorage.setItem('grn_challan', JSON.stringify(challanState)); 
+        } catch(_) {
+          console.warn('Failed to save challan state');
+        }
 
         // Navigate to challan form view
         if (postLoginSection) postLoginSection.classList.add('hidden');
@@ -508,24 +523,59 @@
     });
   }
 
-  // Auto-restore session disabled - users must login explicitly each time
-  // This prevents old sessions from being automatically restored with wrong database selection
-  (function clearOldSession() {
+  // Restore session on page load (from localStorage)
+  // Session persists until user explicitly logs out
+  (function restoreSession() {
     try {
-      // Clear any old session data on page load to force fresh login
+      const raw = localStorage.getItem('grn_session');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || !saved.username || !saved.selectedDatabase) return;
+      
+      // Restore session data
+      session = saved;
+      if (infoUsername) infoUsername.textContent = saved.username;
+      if (infoDatabase) infoDatabase.textContent = saved.selectedDatabase;
+      if (loginSection) loginSection.classList.add('hidden');
+      if (postLoginSection) postLoginSection.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.classList.remove('hidden');
+      
+      // Also restore challan state if any
+      try {
+        const rawChallan = localStorage.getItem('grn_challan');
+        if (rawChallan) {
+          const savedChallan = JSON.parse(rawChallan);
+          if (clientNameInput && savedChallan?.ledgerName) {
+            clientNameInput.value = savedChallan.ledgerName;
+          }
+        }
+      } catch (_) { /* ignore */ }
+      
+      // Load transporters if session restored
+      loadTransporters();
+    } catch (_) { 
+      // If restoration fails, clear bad data
       localStorage.removeItem('grn_session');
       localStorage.removeItem('grn_challan');
-    } catch (_) { /* ignore */ }
+    }
   })();
 
-  // Logout
+  // Logout - Clear session and localStorage
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
+      // Clear localStorage on explicit logout
       try {
         localStorage.removeItem('grn_session');
         localStorage.removeItem('grn_challan');
-      } catch (_) {}
+        console.log('Session cleared from localStorage on logout');
+      } catch (_) {
+        console.warn('Failed to clear localStorage on logout');
+      }
+      
+      // Clear in-memory session
       session = null;
+      
+      // Reset UI to login screen
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
