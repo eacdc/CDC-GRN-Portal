@@ -194,8 +194,8 @@
       username: username
     };
 
-    // Persist session
-    try { localStorage.setItem('grn_session', JSON.stringify(session)); } catch(_) {}
+    // Session is kept only in memory - not saved to localStorage
+    // This prevents conflicts when multiple users use the same browser/computer
 
     if (infoUsername) infoUsername.textContent = username;
     if (infoDatabase) infoDatabase.textContent = data.selectedDatabase;
@@ -265,14 +265,8 @@
         }
         // Fill challan form
         if (clientNameInput) clientNameInput.value = data.ledgerName || '';
-        // Store barcode in session for later use
+        // Store barcode in session for later use (memory only)
         session.challanBarcode = Number(barcode);
-        // Persist recent challan state
-        const challanState = {
-          barcode,
-          ledgerName: data.ledgerName || ''
-        };
-        try { localStorage.setItem('grn_challan', JSON.stringify(challanState)); } catch(_) {}
 
         // Navigate to challan form view
         if (postLoginSection) postLoginSection.classList.add('hidden');
