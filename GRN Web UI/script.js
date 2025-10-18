@@ -148,8 +148,9 @@
   }
 
   async function login(username, database) {
-    // Clear database connection cache before login
-    await clearDbCache();
+    // Note: No cache clearing on login
+    // Backend now handles pool health checks and auto-cleanup
+    // Clearing cache here causes race conditions and connection errors
     
     const base = getApiBaseUrl();
     // Build relative to base (which ends with '/'), yielding '<base>/auth/login'
