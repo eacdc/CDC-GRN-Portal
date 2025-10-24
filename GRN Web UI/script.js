@@ -100,6 +100,7 @@
   const backToFormBtn = document.getElementById('btn-back-to-form');
 
   let session = null; // { userId, ledgerId, machines, selectedDatabase, username }
+  let allowSessionRestore = true; // Flag to control session restoration
 
   function showError(msg) {
     if (loginError) loginError.textContent = msg || '';
@@ -195,6 +196,9 @@
       username: username
     };
 
+    // Re-enable session restoration for future page loads
+    allowSessionRestore = true;
+
     // Save session to localStorage for persistence across page refreshes
     try { 
       localStorage.setItem('grn_session', JSON.stringify(session)); 
@@ -222,12 +226,18 @@
         return;
       }
       
-      // Clear any stale session data before new login
+      // Clear any stale session data IMMEDIATELY before new login
       session = null;
+      allowSessionRestore = false; // Prevent any restoration during login
+      
       try {
         localStorage.removeItem('grn_session');
         localStorage.removeItem('grn_challan');
       } catch (_) {}
+      
+      // Clear info displays immediately to prevent showing old database
+      if (infoUsername) infoUsername.textContent = '';
+      if (infoDatabase) infoDatabase.textContent = '';
       
       try {
         const data = await login(username, database);
@@ -535,6 +545,9 @@
   // Restore session on page load (from localStorage)
   // Session persists until user explicitly logs out
   (function restoreSession() {
+    // Only restore if allowed (not after logout)
+    if (!allowSessionRestore) return;
+    
     try {
       const raw = localStorage.getItem('grn_session');
       if (!raw) return;
@@ -572,6 +585,9 @@
   // Logout - Clear session and localStorage
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
+      // Disable session restoration after logout
+      allowSessionRestore = false;
+      
       // Clear localStorage on explicit logout
       try {
         localStorage.removeItem('grn_session');
@@ -589,7 +605,7 @@
       if (databaseSelect) databaseSelect.value = '';
       if (barcodeInput) barcodeInput.value = '';
       
-      // Clear info displays
+      // Clear info displays immediately
       if (infoUsername) infoUsername.textContent = '';
       if (infoDatabase) infoDatabase.textContent = '';
       
@@ -600,6 +616,11 @@
       if (loginSection) loginSection.classList.remove('hidden');
       if (logoutBtn) logoutBtn.classList.add('hidden');
       if (usernameInput) usernameInput.focus();
+      
+      // Re-enable session restoration after a short delay (in case user refreshes page later)
+      setTimeout(() => {
+        allowSessionRestore = true;
+      }, 5000); // 5 seconds should be enough for user to complete new login
     });
   }
 
