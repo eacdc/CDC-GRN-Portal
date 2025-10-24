@@ -148,6 +148,22 @@
     }
   }
 
+  async function backendLogout() {
+    try {
+      const base = getApiBaseUrl();
+      const logoutUrl = new URL('auth/logout', base);
+      await fetch(logoutUrl.toString(), {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      console.log('Backend session cleared');
+    } catch (e) {
+      console.warn('Failed to clear backend session:', e);
+    }
+  }
+
   async function login(username, database) {
     // Note: No cache clearing on login
     // Backend now handles pool health checks and auto-cleanup
@@ -218,12 +234,24 @@
         return;
       }
       
-      // Clear any stale session data before new login
+      // IMMEDIATELY clear and hide everything before starting login
       session = null;
       
-      // Clear info displays immediately to prevent showing old database
+      // Clear backend session to prevent database conflicts
+      await backendLogout();
+      
+      // Force all screens to be hidden except login
+      if (postLoginSection) postLoginSection.classList.add('hidden');
+      if (challanFormSection) challanFormSection.classList.add('hidden');
+      if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
+      if (loginSection) loginSection.classList.remove('hidden');
+      
+      // Clear all info displays immediately
       if (infoUsername) infoUsername.textContent = '';
       if (infoDatabase) infoDatabase.textContent = '';
+      
+      // Clear barcode field
+      if (barcodeInput) barcodeInput.value = '';
       
       try {
         const data = await login(username, database);
@@ -520,9 +548,12 @@
   // No session restoration - user must login on each page load
   // This prevents any database selection conflicts and cache issues
 
-  // Logout - Clear in-memory session only
+  // Logout - Clear in-memory session AND backend session
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
+      // Clear backend session (cookies) FIRST - this is critical!
+      await backendLogout();
+      
       // Clear in-memory session
       session = null;
       
