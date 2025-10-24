@@ -221,6 +221,14 @@
         showError('Please enter username and select database.');
         return;
       }
+      
+      // Clear any stale session data before new login
+      session = null;
+      try {
+        localStorage.removeItem('grn_session');
+        localStorage.removeItem('grn_challan');
+      } catch (_) {}
+      
       try {
         const data = await login(username, database);
         swapToPostLogin(data, username);
@@ -575,6 +583,15 @@
       
       // Clear in-memory session
       session = null;
+      
+      // Reset form fields to prevent database selection issues
+      if (usernameInput) usernameInput.value = '';
+      if (databaseSelect) databaseSelect.value = '';
+      if (barcodeInput) barcodeInput.value = '';
+      
+      // Clear info displays
+      if (infoUsername) infoUsername.textContent = '';
+      if (infoDatabase) infoDatabase.textContent = '';
       
       // Reset UI to login screen
       if (postLoginSection) postLoginSection.classList.add('hidden');
