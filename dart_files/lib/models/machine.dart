@@ -12,11 +12,17 @@ class Machine {
   });
 
   factory Machine.fromJson(Map<String, dynamic> json) {
+    // Handle both camelCase and PascalCase
+    final machineIdValue = json['machineId'] ?? json['MachineID'];
+    final machineNameValue = json['machineName'] ?? json['MachineName'];
+    final departmentIdValue = json['departmentId'] ?? json['DepartmentID'];
+    final productUnitIdValue = json['productUnitId'] ?? json['ProductUnitID'];
+    
     return Machine(
-      machineId: int.parse(json['machineId'].toString()),
-      machineName: json['machineName'].toString(),
-      departmentId: json['departmentId'] == null ? null : int.tryParse(json['departmentId'].toString()),
-      productUnitId: json['productUnitId'] == null ? null : int.tryParse(json['productUnitId'].toString()),
+      machineId: int.parse(machineIdValue.toString()),
+      machineName: machineNameValue.toString(),
+      departmentId: departmentIdValue == null ? null : int.tryParse(departmentIdValue.toString()),
+      productUnitId: productUnitIdValue == null ? null : int.tryParse(productUnitIdValue.toString()),
     );
   }
 

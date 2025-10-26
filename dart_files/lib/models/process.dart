@@ -32,21 +32,26 @@ class Process {
   });
 
   factory Process.fromJson(Map<String, dynamic> json) {
+    // Handle both camelCase and PascalCase
     return Process(
-      pwoNo: json['pwoNo']?.toString() ?? '',
-      pwoDate: json['pwoDate']?.toString() ?? '',
-      client: json['client']?.toString() ?? '',
-      jobName: json['jobName']?.toString() ?? '',
-      componentName: json['componentName']?.toString() ?? '',
-      formNo: json['formNo']?.toString() ?? '',
-      scheduleQty: int.tryParse(json['scheduleQty']?.toString() ?? '0') ?? 0,
-      qtyProduced: int.tryParse(json['qtyProduced']?.toString() ?? '0') ?? 0,
-      paperIssuedQty: json['paperIssuedQty'] == null ? null : double.tryParse(json['paperIssuedQty'].toString()),
-      currentStatus: json['currentStatus']?.toString(),
-      jobcardContentNo: json['jobcardContentNo']?.toString() ?? '',
-      jobBookingJobcardContentsId: int.tryParse(json['jobBookingJobcardContentsId']?.toString() ?? '0') ?? 0,
-      processName: json['processName']?.toString() ?? '',
-      processId: json['processId'] == null ? null : int.tryParse(json['processId'].toString()),
+      pwoNo: (json['pwoNo'] ?? json['PWONo'])?.toString() ?? '',
+      pwoDate: (json['pwoDate'] ?? json['PWODate'])?.toString() ?? '',
+      client: (json['client'] ?? json['Client'])?.toString() ?? '',
+      jobName: (json['jobName'] ?? json['JobName'])?.toString() ?? '',
+      componentName: (json['componentName'] ?? json['ComponentName'])?.toString() ?? '',
+      formNo: (json['formNo'] ?? json['FormNo'])?.toString() ?? '',
+      scheduleQty: int.tryParse((json['scheduleQty'] ?? json['ScheduleQty'])?.toString() ?? '0') ?? 0,
+      qtyProduced: int.tryParse((json['qtyProduced'] ?? json['QtyProduced'])?.toString() ?? '0') ?? 0,
+      paperIssuedQty: (json['paperIssuedQty'] ?? json['PaperIssuedQty']) == null 
+        ? null 
+        : double.tryParse((json['paperIssuedQty'] ?? json['PaperIssuedQty']).toString()),
+      currentStatus: (json['currentStatus'] ?? json['CurrentStatus'])?.toString(),
+      jobcardContentNo: (json['jobcardContentNo'] ?? json['JobCardContentNo'])?.toString() ?? '',
+      jobBookingJobcardContentsId: int.tryParse((json['jobBookingJobcardContentsId'] ?? json['JobBookingJobCardContentsID'])?.toString() ?? '0') ?? 0,
+      processName: (json['processName'] ?? json['ProcessName'])?.toString() ?? '',
+      processId: (json['processId'] ?? json['ProcessID']) == null 
+        ? null 
+        : int.tryParse((json['processId'] ?? json['ProcessID']).toString()),
     );
   }
 
