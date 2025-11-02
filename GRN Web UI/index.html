@@ -37,13 +37,38 @@
         </form>
       </section>
 
-      <section id="post-login-section" class="card hidden">
+      <section id="landing-section" class="landing-section hidden">
         <div class="page-header">
-          <h2>Initiate Challan</h2>
+          <h2>Select Portal</h2>
         </div>
         <div class="info">
           <p><strong>User:</strong> <span id="info-username"></span></p>
           <p><strong>Database:</strong> <span id="info-database"></span></p>
+        </div>
+        <div class="portal-cards">
+          <div class="portal-card" id="portal-grm">
+            <div class="portal-card-content">
+              <h3>GRM Portal</h3>
+              <p class="portal-description">Goods Receipt Management</p>
+            </div>
+          </div>
+          <div class="portal-card" id="portal-gpn">
+            <div class="portal-card-content">
+              <h3>GPN Portal</h3>
+              <p class="portal-description">Goods Packing Note</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="post-login-section" class="card hidden">
+        <div class="page-header">
+          <button id="btn-back-to-landing" class="back-btn">← Back</button>
+          <h2>Initiate Challan</h2>
+        </div>
+        <div class="info">
+          <p><strong>User:</strong> <span id="info-username-grm"></span></p>
+          <p><strong>Database:</strong> <span id="info-database-grm"></span></p>
         </div>
         <div class="form-row">
           <label for="barcode">Barcode Number</label>

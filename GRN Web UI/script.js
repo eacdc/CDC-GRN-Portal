@@ -67,6 +67,7 @@
 
   // Elements
   const loginSection = document.getElementById('login-section');
+  const landingSection = document.getElementById('landing-section');
   const postLoginSection = document.getElementById('post-login-section');
   const challanFormSection = document.getElementById('challan-form-section');
   const deliveryNoteConfirmation = document.getElementById('delivery-note-confirmation');
@@ -76,9 +77,14 @@
   const databaseSelect = document.getElementById('database');
   const infoUsername = document.getElementById('info-username');
   const infoDatabase = document.getElementById('info-database');
+  const infoUsernameGrm = document.getElementById('info-username-grm');
+  const infoDatabaseGrm = document.getElementById('info-database-grm');
   const barcodeInput = document.getElementById('barcode');
   const initiateBtn = document.getElementById('btn-initiate');
   const logoutBtn = document.getElementById('btn-logout');
+  const backToLandingBtn = document.getElementById('btn-back-to-landing');
+  const portalGrm = document.getElementById('portal-grm');
+  const portalGpn = document.getElementById('portal-gpn');
   const clientNameInput = document.getElementById('clientName');
   const modeOfTransportSelect = document.getElementById('modeOfTransport');
   const containerNumberInput = document.getElementById('containerNumber');
@@ -216,10 +222,11 @@
 
     if (infoUsername) infoUsername.textContent = username;
     if (infoDatabase) infoDatabase.textContent = data.selectedDatabase;
+    if (infoUsernameGrm) infoUsernameGrm.textContent = username;
+    if (infoDatabaseGrm) infoDatabaseGrm.textContent = data.selectedDatabase;
 
     if (loginSection) loginSection.classList.add('hidden');
-    if (postLoginSection) postLoginSection.classList.remove('hidden');
-    if (barcodeInput) barcodeInput.focus();
+    if (landingSection) landingSection.classList.remove('hidden');
     if (logoutBtn) logoutBtn.classList.remove('hidden');
   }
 
@@ -241,6 +248,7 @@
       await backendLogout();
       
       // Force all screens to be hidden except login
+      if (landingSection) landingSection.classList.add('hidden');
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
@@ -249,6 +257,8 @@
       // Clear all info displays immediately
       if (infoUsername) infoUsername.textContent = '';
       if (infoDatabase) infoDatabase.textContent = '';
+      if (infoUsernameGrm) infoUsernameGrm.textContent = '';
+      if (infoDatabaseGrm) infoDatabaseGrm.textContent = '';
       
       // Clear barcode field
       if (barcodeInput) barcodeInput.value = '';
@@ -530,7 +540,31 @@
   // Initialize table on page load
   initializeTable();
 
+  // Portal navigation handlers
+  if (portalGrm) {
+    portalGrm.addEventListener('click', () => {
+      if (landingSection) landingSection.classList.add('hidden');
+      if (postLoginSection) postLoginSection.classList.remove('hidden');
+      if (barcodeInput) barcodeInput.focus();
+    });
+  }
+
+  if (portalGpn) {
+    portalGpn.addEventListener('click', () => {
+      // GPN Portal functionality - can be extended later
+      alert('GPN Portal functionality coming soon');
+    });
+  }
+
   // Back button handlers
+  if (backToLandingBtn) {
+    backToLandingBtn.addEventListener('click', () => {
+      if (postLoginSection) postLoginSection.classList.add('hidden');
+      if (challanFormSection) challanFormSection.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
+    });
+  }
+
   if (backToInitiateBtn) {
     backToInitiateBtn.addEventListener('click', () => {
       if (challanFormSection) challanFormSection.classList.add('hidden');
@@ -567,6 +601,7 @@
       if (infoDatabase) infoDatabase.textContent = '';
       
       // Reset UI to login screen
+      if (landingSection) landingSection.classList.add('hidden');
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
