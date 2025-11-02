@@ -71,6 +71,7 @@
   const postLoginSection = document.getElementById('post-login-section');
   const challanFormSection = document.getElementById('challan-form-section');
   const deliveryNoteConfirmation = document.getElementById('delivery-note-confirmation');
+  const gpnSection = document.getElementById('gpn-section');
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
   const usernameInput = document.getElementById('username');
@@ -79,12 +80,18 @@
   const infoDatabase = document.getElementById('info-database');
   const infoUsernameGrm = document.getElementById('info-username-grm');
   const infoDatabaseGrm = document.getElementById('info-database-grm');
+  const infoUsernameGpn = document.getElementById('info-username-gpn');
+  const infoDatabaseGpn = document.getElementById('info-database-gpn');
   const barcodeInput = document.getElementById('barcode');
+  const gpnBarcodeInput = document.getElementById('gpn-barcode');
   const initiateBtn = document.getElementById('btn-initiate');
+  const submitGpnBtn = document.getElementById('btn-submit-gpn');
   const logoutBtn = document.getElementById('btn-logout');
   const backToLandingBtn = document.getElementById('btn-back-to-landing');
+  const backToLandingGpnBtn = document.getElementById('btn-back-to-landing-gpn');
   const portalGrm = document.getElementById('portal-grm');
   const portalGpn = document.getElementById('portal-gpn');
+  const gpnError = document.getElementById('gpn-error');
   const clientNameInput = document.getElementById('clientName');
   const modeOfTransportSelect = document.getElementById('modeOfTransport');
   const containerNumberInput = document.getElementById('containerNumber');
@@ -224,6 +231,8 @@
     if (infoDatabase) infoDatabase.textContent = data.selectedDatabase;
     if (infoUsernameGrm) infoUsernameGrm.textContent = username;
     if (infoDatabaseGrm) infoDatabaseGrm.textContent = data.selectedDatabase;
+    if (infoUsernameGpn) infoUsernameGpn.textContent = username;
+    if (infoDatabaseGpn) infoDatabaseGpn.textContent = data.selectedDatabase;
 
     if (loginSection) loginSection.classList.add('hidden');
     if (landingSection) landingSection.classList.remove('hidden');
@@ -252,6 +261,7 @@
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
+      if (gpnSection) gpnSection.classList.add('hidden');
       if (loginSection) loginSection.classList.remove('hidden');
       
       // Clear all info displays immediately
@@ -259,9 +269,13 @@
       if (infoDatabase) infoDatabase.textContent = '';
       if (infoUsernameGrm) infoUsernameGrm.textContent = '';
       if (infoDatabaseGrm) infoDatabaseGrm.textContent = '';
+      if (infoUsernameGpn) infoUsernameGpn.textContent = '';
+      if (infoDatabaseGpn) infoDatabaseGpn.textContent = '';
       
-      // Clear barcode field
+      // Clear barcode fields
       if (barcodeInput) barcodeInput.value = '';
+      if (gpnBarcodeInput) gpnBarcodeInput.value = '';
+      if (gpnError) gpnError.textContent = '';
       
       try {
         const data = await login(username, database);
@@ -551,8 +565,90 @@
 
   if (portalGpn) {
     portalGpn.addEventListener('click', () => {
-      // GPN Portal functionality - can be extended later
-      alert('GPN Portal functionality coming soon');
+      if (landingSection) landingSection.classList.add('hidden');
+      if (gpnSection) gpnSection.classList.remove('hidden');
+      if (gpnBarcodeInput) gpnBarcodeInput.focus();
+    });
+  }
+
+  // GPN Submit handler
+  if (submitGpnBtn) {
+    submitGpnBtn.addEventListener('click', async () => {
+      const barcode = String(gpnBarcodeInput?.value || '').trim();
+      if (!barcode) {
+        if (gpnError) gpnError.textContent = 'Please enter a Barcode Number.';
+        if (gpnBarcodeInput) gpnBarcodeInput.focus();
+        return;
+      }
+      if (!session || !session.selectedDatabase) {
+        if (gpnError) gpnError.textContent = 'Please login first.';
+        return;
+      }
+
+      if (gpnError) gpnError.textContent = '';
+      submitGpnBtn.disabled = true;
+      submitGpnBtn.textContent = 'Submitting...';
+
+      try {
+        const base = getApiBaseUrl();
+        const url = new URL('gpn/save-finish-goods', base);
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            barcode: Number(barcode),
+            database: session.selectedDatabase,
+            userId: session.userId,
+            companyId: 2,
+            branchId: 0,
+            status: 'new'
+          })
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          throw new Error(t || 'Failed to submit barcode');
+        }
+
+        const data = await res.json();
+        if (!data || data.status !== true) {
+          alertWithSiren(data?.error || 'Failed to submit barcode');
+          return;
+        }
+
+        alert('Barcode submitted successfully!');
+        if (gpnBarcodeInput) {
+          gpnBarcodeInput.value = '';
+          gpnBarcodeInput.focus();
+        }
+      } catch (e) {
+        try {
+          const parsed = JSON.parse(e.message);
+          alertWithSiren(parsed.error || 'Failed to submit barcode');
+          if (gpnError) gpnError.textContent = parsed.error || 'Failed to submit barcode';
+        } catch(_) {
+          const errorMsg = String(e.message || e);
+          alertWithSiren(errorMsg);
+          if (gpnError) gpnError.textContent = errorMsg;
+        }
+      } finally {
+        submitGpnBtn.disabled = false;
+        submitGpnBtn.textContent = 'Submit';
+      }
+    });
+  }
+
+  // GPN Barcode Enter key handler
+  if (gpnBarcodeInput) {
+    gpnBarcodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && submitGpnBtn) {
+        e.preventDefault();
+        submitGpnBtn.click();
+      }
     });
   }
 
@@ -561,6 +657,13 @@
     backToLandingBtn.addEventListener('click', () => {
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
+    });
+  }
+
+  if (backToLandingGpnBtn) {
+    backToLandingGpnBtn.addEventListener('click', () => {
+      if (gpnSection) gpnSection.classList.add('hidden');
       if (landingSection) landingSection.classList.remove('hidden');
     });
   }
@@ -605,6 +708,7 @@
       if (postLoginSection) postLoginSection.classList.add('hidden');
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
+      if (gpnSection) gpnSection.classList.add('hidden');
       if (loginSection) loginSection.classList.remove('hidden');
       if (logoutBtn) logoutBtn.classList.add('hidden');
       if (usernameInput) usernameInput.focus();

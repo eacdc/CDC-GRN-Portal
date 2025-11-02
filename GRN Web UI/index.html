@@ -48,7 +48,7 @@
         <div class="portal-cards">
           <div class="portal-card" id="portal-grm">
             <div class="portal-card-content">
-              <h3>GRM Portal</h3>
+              <h3>GRN Portal</h3>
               <p class="portal-description">Goods Receipt Management</p>
             </div>
           </div>
@@ -77,6 +77,25 @@
         <div class="form-actions">
           <button id="btn-initiate">Innitiate Challan</button>
         </div>
+      </section>
+
+      <section id="gpn-section" class="card hidden">
+        <div class="page-header">
+          <button id="btn-back-to-landing-gpn" class="back-btn">← Back</button>
+          <h2>GPN Portal</h2>
+        </div>
+        <div class="info">
+          <p><strong>User:</strong> <span id="info-username-gpn"></span></p>
+          <p><strong>Database:</strong> <span id="info-database-gpn"></span></p>
+        </div>
+        <div class="form-row">
+          <label for="gpn-barcode">Barcode Number</label>
+          <input id="gpn-barcode" name="gpn-barcode" type="text" inputmode="numeric" />
+        </div>
+        <div class="form-actions">
+          <button id="btn-submit-gpn">Submit</button>
+        </div>
+        <p id="gpn-error" class="error" aria-live="polite"></p>
       </section>
 
       <section id="challan-form-section" class="card hidden">
