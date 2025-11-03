@@ -96,7 +96,6 @@
   const portalGrm = document.getElementById('portal-grm');
   const portalGpn = document.getElementById('portal-gpn');
   const gpnError = document.getElementById('gpn-error');
-  const gpnTransactionIdSpan = document.getElementById('gpn-transaction-id');
   const gpnTableBody = document.getElementById('gpn-table-body');
   const clientNameInput = document.getElementById('clientName');
   const modeOfTransportSelect = document.getElementById('modeOfTransport');
@@ -285,7 +284,6 @@
       if (gpnConfBarcode) gpnConfBarcode.value = '';
       if (gpnError) gpnError.textContent = '';
       if (gpnTableBody) gpnTableBody.innerHTML = '';
-      if (gpnTransactionIdSpan) gpnTransactionIdSpan.textContent = '';
       
       try {
         const data = await login(username, database);
@@ -643,9 +641,6 @@
         session.gpnFgTransactionId = fgTransactionId;
         window.__gpnFgTransactionId = fgTransactionId;
 
-        // Display transaction ID
-        if (gpnTransactionIdSpan) gpnTransactionIdSpan.textContent = fgTransactionId;
-
         // Populate first row in table
         if (gpnTableBody) {
           const firstRow = document.createElement('tr');
@@ -761,7 +756,7 @@
       const jobName = responseData.JobName || responseData.jobname || '—';
       const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
 
-      // Add new row to table (after the first row which is from initial submission)
+      // Add new row to table (always at the top, newest first)
       if (gpnTableBody) {
         const newRow = document.createElement('tr');
         newRow.innerHTML = `
@@ -773,14 +768,8 @@
           <td>${jobName}</td>
           <td>${jobBookingNo}</td>
         `;
-        const firstRow = gpnTableBody.firstElementChild;
-        if (firstRow) {
-          // Insert after the first row
-          firstRow.insertAdjacentElement('afterend', newRow);
-        } else {
-          // If no first row exists, just append
-          gpnTableBody.appendChild(newRow);
-        }
+        // Insert at the top (prepend) - newest entries always at top
+        gpnTableBody.insertBefore(newRow, gpnTableBody.firstChild);
       }
 
       if (gpnConfBarcode) {
