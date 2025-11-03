@@ -649,13 +649,20 @@
         // Populate first row in table
         if (gpnTableBody) {
           const firstRow = document.createElement('tr');
-          const jobName = responseData.JobName || responseData.jobname || responseData.JobName || '—';
-          const statusText = responseData.Status || responseData.status || 'Success';
+          const voucherNo = responseData.VoucherNo || responseData.voucherno || responseData.VoucherNumber || '—';
+          const orderQty = responseData.OrderQty || responseData.orderqty || 0;
+          const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
+          const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
+          const jobName = responseData.JobName || responseData.jobname || '—';
+          const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
+          
           firstRow.innerHTML = `
-            <td>${barcode}</td>
+            <td>${voucherNo}</td>
+            <td>${orderQty}</td>
+            <td>${packedQtyThisVoucher}</td>
+            <td>${packedQtyTotal}</td>
             <td>${jobName}</td>
-            <td>${statusText}</td>
-            <td>${fgTransactionId}</td>
+            <td>${jobBookingNo}</td>
           `;
           gpnTableBody.innerHTML = '';
           gpnTableBody.appendChild(firstRow);
@@ -746,17 +753,23 @@
       }
 
       const responseData = data.data || {};
-      const jobName = responseData.JobName || responseData.jobname || responseData.JobName || '—';
-      const statusText = responseData.Status || responseData.status || 'Success';
+      const voucherNo = responseData.VoucherNo || responseData.voucherno || responseData.VoucherNumber || '—';
+      const orderQty = responseData.OrderQty || responseData.orderqty || 0;
+      const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
+      const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
+      const jobName = responseData.JobName || responseData.jobname || '—';
+      const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
 
       // Add new row to table (after the first row which is from initial submission)
       if (gpnTableBody) {
         const newRow = document.createElement('tr');
         newRow.innerHTML = `
-          <td>${barcodeVal}</td>
+          <td>${voucherNo}</td>
+          <td>${orderQty}</td>
+          <td>${packedQtyThisVoucher}</td>
+          <td>${packedQtyTotal}</td>
           <td>${jobName}</td>
-          <td>${statusText}</td>
-          <td>${fgId}</td>
+          <td>${jobBookingNo}</td>
         `;
         const firstRow = gpnTableBody.firstElementChild;
         if (firstRow) {
