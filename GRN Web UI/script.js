@@ -657,6 +657,7 @@
           const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
           
           firstRow.innerHTML = `
+            <td>${barcode}</td>
             <td>${voucherNo}</td>
             <td>${orderQty}</td>
             <td>${packedQtyThisVoucher}</td>
@@ -764,6 +765,7 @@
       if (gpnTableBody) {
         const newRow = document.createElement('tr');
         newRow.innerHTML = `
+          <td>${barcodeVal}</td>
           <td>${voucherNo}</td>
           <td>${orderQty}</td>
           <td>${packedQtyThisVoucher}</td>
