@@ -118,7 +118,54 @@
   const backToFormBtn = document.getElementById('btn-back-to-form');
 
   let session = null; // { userId, ledgerId, machines, selectedDatabase, username }
-  // Session stored in memory only - no localStorage, no persistence
+  
+  // Session storage keys
+  const SESSION_KEY = 'grn_session';
+  const SESSION_ID_KEY = 'grn_session_id';
+  
+  // Session Management Functions
+  function saveSession(sessionData) {
+    try {
+      // Generate a unique session ID for this login
+      const sessionId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionData));
+      localStorage.setItem(SESSION_ID_KEY, sessionId);
+      console.log('GRN Session saved:', sessionId);
+    } catch (error) {
+      console.error('Error saving session:', error);
+    }
+  }
+  
+  function loadSession() {
+    try {
+      const sessionData = localStorage.getItem(SESSION_KEY);
+      if (sessionData) {
+        return JSON.parse(sessionData);
+      }
+    } catch (error) {
+      console.error('Error loading session:', error);
+      clearSession();
+    }
+    return null;
+  }
+  
+  function clearSession() {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_ID_KEY);
+      console.log('GRN Session cleared');
+    } catch (error) {
+      console.error('Error clearing session:', error);
+    }
+  }
+  
+  function getSessionId() {
+    try {
+      return localStorage.getItem(SESSION_ID_KEY);
+    } catch (error) {
+      return null;
+    }
+  }
 
   function showError(msg) {
     if (loginError) loginError.textContent = msg || '';
@@ -230,7 +277,8 @@
       username: username
     };
 
-    // Session stored in memory only - no persistence to avoid DB conflicts
+    // Save session to localStorage for persistence across tabs
+    saveSession(session);
 
     if (infoUsername) infoUsername.textContent = username;
     if (infoDatabase) infoDatabase.textContent = data.selectedDatabase;
@@ -832,37 +880,129 @@
     });
   }
 
-  // No session restoration - user must login on each page load
-  // This prevents any database selection conflicts and cache issues
+  // Restore session on page load
+  function restoreSession() {
+    const savedSession = loadSession();
+    if (savedSession && savedSession.username && savedSession.selectedDatabase) {
+      console.log('Restoring session for user:', savedSession.username);
+      session = savedSession;
+      
+      // Update UI to show logged in state
+      if (infoUsername) infoUsername.textContent = savedSession.username;
+      if (infoDatabase) infoDatabase.textContent = savedSession.selectedDatabase;
+      if (infoUsernameGrm) infoUsernameGrm.textContent = savedSession.username;
+      if (infoDatabaseGrm) infoDatabaseGrm.textContent = savedSession.selectedDatabase;
+      if (infoUsernameGpn) infoUsernameGpn.textContent = savedSession.username;
+      if (infoDatabaseGpn) infoDatabaseGpn.textContent = savedSession.selectedDatabase;
+      
+      // Show landing page
+      if (loginSection) loginSection.classList.add('hidden');
+      if (landingSection) landingSection.classList.remove('hidden');
+      if (logoutBtn) logoutBtn.classList.remove('hidden');
+      
+      return true;
+    }
+    return false;
+  }
+  
+  // Cross-tab session synchronization
+  window.addEventListener('storage', (event) => {
+    // Listen for changes to session storage
+    if (event.key === SESSION_KEY) {
+      if (event.newValue === null) {
+        // Session was cleared (logout in another tab)
+        console.log('Session cleared in another tab, logging out...');
+        performLogout(false); // Don't clear storage again, it's already cleared
+      } else if (event.oldValue !== null) {
+        // Session was updated (new login in another tab)
+        const newSession = JSON.parse(event.newValue);
+        const currentSessionId = getSessionId();
+        const newSessionId = localStorage.getItem(SESSION_ID_KEY);
+        
+        // If session ID changed, it means user logged in from another tab
+        if (currentSessionId && newSessionId && currentSessionId !== newSessionId) {
+          console.log('New login detected in another tab, logging out current session...');
+          // Clear local state and show login without triggering storage event
+          session = null;
+          
+          // Clear all fields
+          if (usernameInput) usernameInput.value = '';
+          if (databaseSelect) databaseSelect.value = '';
+          if (barcodeInput) barcodeInput.value = '';
+          if (gpnBarcodeInput) gpnBarcodeInput.value = '';
+          if (gpnConfBarcode) gpnConfBarcode.value = '';
+          
+          // Clear info displays
+          if (infoUsername) infoUsername.textContent = '';
+          if (infoDatabase) infoDatabase.textContent = '';
+          if (infoUsernameGrm) infoUsernameGrm.textContent = '';
+          if (infoDatabaseGrm) infoDatabaseGrm.textContent = '';
+          if (infoUsernameGpn) infoUsernameGpn.textContent = '';
+          if (infoDatabaseGpn) infoDatabaseGpn.textContent = '';
+          
+          // Reset UI to login screen
+          if (landingSection) landingSection.classList.add('hidden');
+          if (postLoginSection) postLoginSection.classList.add('hidden');
+          if (challanFormSection) challanFormSection.classList.add('hidden');
+          if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
+          if (gpnSection) gpnSection.classList.add('hidden');
+          if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
+          if (loginSection) loginSection.classList.remove('hidden');
+          if (logoutBtn) logoutBtn.classList.add('hidden');
+          
+          alert('You have been logged out because a new login was detected in another tab.');
+        }
+      }
+    }
+  });
+  
+  // Attempt to restore session on page load
+  restoreSession();
 
+  // Logout function that can be called with or without clearing storage
+  async function performLogout(clearStorage = true) {
+    // Clear backend session (cookies) FIRST - this is critical!
+    await backendLogout();
+    
+    // Clear in-memory session
+    session = null;
+    
+    // Clear localStorage if requested (don't clear if triggered by storage event)
+    if (clearStorage) {
+      clearSession();
+    }
+    
+    // Reset form fields to prevent database selection issues
+    if (usernameInput) usernameInput.value = '';
+    if (databaseSelect) databaseSelect.value = '';
+    if (barcodeInput) barcodeInput.value = '';
+    if (gpnBarcodeInput) gpnBarcodeInput.value = '';
+    if (gpnConfBarcode) gpnConfBarcode.value = '';
+    
+    // Clear info displays immediately
+    if (infoUsername) infoUsername.textContent = '';
+    if (infoDatabase) infoDatabase.textContent = '';
+    if (infoUsernameGrm) infoUsernameGrm.textContent = '';
+    if (infoDatabaseGrm) infoDatabaseGrm.textContent = '';
+    if (infoUsernameGpn) infoUsernameGpn.textContent = '';
+    if (infoDatabaseGpn) infoDatabaseGpn.textContent = '';
+    
+    // Reset UI to login screen
+    if (landingSection) landingSection.classList.add('hidden');
+    if (postLoginSection) postLoginSection.classList.add('hidden');
+    if (challanFormSection) challanFormSection.classList.add('hidden');
+    if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
+    if (gpnSection) gpnSection.classList.add('hidden');
+    if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
+    if (loginSection) loginSection.classList.remove('hidden');
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+    if (usernameInput) usernameInput.focus();
+  }
+  
   // Logout - Clear in-memory session AND backend session
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
-      // Clear backend session (cookies) FIRST - this is critical!
-      await backendLogout();
-      
-      // Clear in-memory session
-      session = null;
-      
-      // Reset form fields to prevent database selection issues
-      if (usernameInput) usernameInput.value = '';
-      if (databaseSelect) databaseSelect.value = '';
-      if (barcodeInput) barcodeInput.value = '';
-      
-      // Clear info displays immediately
-      if (infoUsername) infoUsername.textContent = '';
-      if (infoDatabase) infoDatabase.textContent = '';
-      
-      // Reset UI to login screen
-      if (landingSection) landingSection.classList.add('hidden');
-      if (postLoginSection) postLoginSection.classList.add('hidden');
-      if (challanFormSection) challanFormSection.classList.add('hidden');
-      if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
-      if (gpnSection) gpnSection.classList.add('hidden');
-      if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
-      if (loginSection) loginSection.classList.remove('hidden');
-      if (logoutBtn) logoutBtn.classList.add('hidden');
-      if (usernameInput) usernameInput.focus();
+      await performLogout(true);
     });
   }
 
