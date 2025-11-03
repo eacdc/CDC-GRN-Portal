@@ -72,6 +72,7 @@
   const challanFormSection = document.getElementById('challan-form-section');
   const deliveryNoteConfirmation = document.getElementById('delivery-note-confirmation');
   const gpnSection = document.getElementById('gpn-section');
+  const gpnConfirmation = document.getElementById('gpn-confirmation');
   const loginForm = document.getElementById('login-form');
   const loginError = document.getElementById('login-error');
   const usernameInput = document.getElementById('username');
@@ -84,14 +85,19 @@
   const infoDatabaseGpn = document.getElementById('info-database-gpn');
   const barcodeInput = document.getElementById('barcode');
   const gpnBarcodeInput = document.getElementById('gpn-barcode');
+  const gpnConfBarcode = document.getElementById('gpn-conf-barcode');
   const initiateBtn = document.getElementById('btn-initiate');
   const submitGpnBtn = document.getElementById('btn-submit-gpn');
+  const updateGpnBtn = document.getElementById('btn-update-gpn');
   const logoutBtn = document.getElementById('btn-logout');
   const backToLandingBtn = document.getElementById('btn-back-to-landing');
   const backToLandingGpnBtn = document.getElementById('btn-back-to-landing-gpn');
+  const backToGpnFormBtn = document.getElementById('btn-back-to-gpn-form');
   const portalGrm = document.getElementById('portal-grm');
   const portalGpn = document.getElementById('portal-gpn');
   const gpnError = document.getElementById('gpn-error');
+  const gpnTransactionIdSpan = document.getElementById('gpn-transaction-id');
+  const gpnTableBody = document.getElementById('gpn-table-body');
   const clientNameInput = document.getElementById('clientName');
   const modeOfTransportSelect = document.getElementById('modeOfTransport');
   const containerNumberInput = document.getElementById('containerNumber');
@@ -262,6 +268,7 @@
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
       if (gpnSection) gpnSection.classList.add('hidden');
+      if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
       if (loginSection) loginSection.classList.remove('hidden');
       
       // Clear all info displays immediately
@@ -275,7 +282,10 @@
       // Clear barcode fields
       if (barcodeInput) barcodeInput.value = '';
       if (gpnBarcodeInput) gpnBarcodeInput.value = '';
+      if (gpnConfBarcode) gpnConfBarcode.value = '';
       if (gpnError) gpnError.textContent = '';
+      if (gpnTableBody) gpnTableBody.innerHTML = '';
+      if (gpnTransactionIdSpan) gpnTransactionIdSpan.textContent = '';
       
       try {
         const data = await login(username, database);
@@ -620,11 +630,41 @@
           return;
         }
 
-        alert('Barcode submitted successfully!');
-        if (gpnBarcodeInput) {
-          gpnBarcodeInput.value = '';
-          gpnBarcodeInput.focus();
+        // Extract FGTransactionID from response
+        const responseData = data.data || {};
+        const fgTransactionId = responseData.FGTransactionID || responseData.fgtransactionid || responseData.FGTransactionId || null;
+
+        if (!fgTransactionId) {
+          alertWithSiren('Success but no FGTransactionID returned. Cannot proceed to confirmation screen.');
+          return;
         }
+
+        // Store FGTransactionID for updates
+        session.gpnFgTransactionId = fgTransactionId;
+        window.__gpnFgTransactionId = fgTransactionId;
+
+        // Display transaction ID
+        if (gpnTransactionIdSpan) gpnTransactionIdSpan.textContent = fgTransactionId;
+
+        // Populate first row in table
+        if (gpnTableBody) {
+          const firstRow = document.createElement('tr');
+          const jobName = responseData.JobName || responseData.jobname || responseData.JobName || '—';
+          const statusText = responseData.Status || responseData.status || 'Success';
+          firstRow.innerHTML = `
+            <td>${barcode}</td>
+            <td>${jobName}</td>
+            <td>${statusText}</td>
+            <td>${fgTransactionId}</td>
+          `;
+          gpnTableBody.innerHTML = '';
+          gpnTableBody.appendChild(firstRow);
+        }
+
+        // Navigate to confirmation screen
+        if (gpnSection) gpnSection.classList.add('hidden');
+        if (gpnConfirmation) gpnConfirmation.classList.remove('hidden');
+        if (gpnConfBarcode) gpnConfBarcode.focus();
       } catch (e) {
         try {
           const parsed = JSON.parse(e.message);
@@ -652,6 +692,105 @@
     });
   }
 
+  // GPN Update Entry handler
+  async function runUpdateGpn() {
+    try {
+      if (!session || !session.selectedDatabase || !session.userId) {
+        alert('Please login first.');
+        return;
+      }
+
+      const barcodeVal = String(gpnConfBarcode?.value || '').trim();
+      if (!barcodeVal) {
+        alert('Enter barcode number');
+        if (gpnConfBarcode) gpnConfBarcode.focus();
+        return;
+      }
+
+      // Use stored FGTransactionID from initial submission
+      const fgId = session.gpnFgTransactionId || window.__gpnFgTransactionId;
+      if (!fgId) {
+        alert('Missing FGTransactionID from initial save. Please submit a new barcode first.');
+        return;
+      }
+
+      const base = getApiBaseUrl();
+      const url = new URL('gpn/save-finish-goods', base);
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          barcode: Number(barcodeVal),
+          database: session.selectedDatabase,
+          userId: session.userId,
+          companyId: 2,
+          branchId: 0,
+          status: 'update',
+          fgTransactionId: fgId
+        })
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => '');
+        throw new Error(t || 'Failed to update entry');
+      }
+
+      const data = await res.json();
+      if (!data || data.status !== true) {
+        alertWithSiren(data?.error || 'Failed to update entry');
+        return;
+      }
+
+      const responseData = data.data || {};
+      const jobName = responseData.JobName || responseData.jobname || responseData.JobName || '—';
+      const statusText = responseData.Status || responseData.status || 'Success';
+
+      // Add new row to table (after the first row which is from initial submission)
+      if (gpnTableBody) {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+          <td>${barcodeVal}</td>
+          <td>${jobName}</td>
+          <td>${statusText}</td>
+          <td>${fgId}</td>
+        `;
+        const firstRow = gpnTableBody.firstElementChild;
+        if (firstRow) {
+          // Insert after the first row
+          firstRow.insertAdjacentElement('afterend', newRow);
+        } else {
+          // If no first row exists, just append
+          gpnTableBody.appendChild(newRow);
+        }
+      }
+
+      if (gpnConfBarcode) {
+        gpnConfBarcode.value = '';
+        gpnConfBarcode.focus();
+      }
+    } catch (e) {
+      alertWithSiren(String(e.message || e));
+    }
+  }
+
+  if (updateGpnBtn) {
+    updateGpnBtn.addEventListener('click', () => { runUpdateGpn(); });
+  }
+
+  // GPN Confirmation Barcode Enter key handler
+  if (gpnConfBarcode) {
+    gpnConfBarcode.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && updateGpnBtn) {
+        e.preventDefault();
+        runUpdateGpn();
+      }
+    });
+  }
+
   // Back button handlers
   if (backToLandingBtn) {
     backToLandingBtn.addEventListener('click', () => {
@@ -665,6 +804,13 @@
     backToLandingGpnBtn.addEventListener('click', () => {
       if (gpnSection) gpnSection.classList.add('hidden');
       if (landingSection) landingSection.classList.remove('hidden');
+    });
+  }
+
+  if (backToGpnFormBtn) {
+    backToGpnFormBtn.addEventListener('click', () => {
+      if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
+      if (gpnSection) gpnSection.classList.remove('hidden');
     });
   }
 
@@ -709,6 +855,7 @@
       if (challanFormSection) challanFormSection.classList.add('hidden');
       if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
       if (gpnSection) gpnSection.classList.add('hidden');
+      if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
       if (loginSection) loginSection.classList.remove('hidden');
       if (logoutBtn) logoutBtn.classList.add('hidden');
       if (usernameInput) usernameInput.focus();

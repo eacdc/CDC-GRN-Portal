@@ -98,6 +98,40 @@
         <p id="gpn-error" class="error" aria-live="polite"></p>
       </section>
 
+      <section id="gpn-confirmation" class="card delivery-note-card hidden">
+        <div class="page-header">
+          <button id="btn-back-to-gpn-form" class="back-btn">← Back</button>
+          <h2>GPN Entry Created</h2>
+        </div>
+        <div class="info">
+          <p><strong>FG Transaction ID:</strong> <span id="gpn-transaction-id"></span></p>
+        </div>
+        <div class="form-row barcode-row">
+          <label>Barcode Number</label>
+          <input id="gpn-conf-barcode" type="text" placeholder="Enter barcode number" />
+        </div>
+        
+        <div class="table-container">
+          <table class="delivery-table">
+            <thead>
+              <tr>
+                <th>Barcode Number</th>
+                <th>Job Name</th>
+                <th>Status</th>
+                <th>Transaction ID</th>
+              </tr>
+            </thead>
+            <tbody id="gpn-table-body">
+              <!-- Rows will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="form-actions">
+          <button id="btn-update-gpn" class="secondary">Update Entry</button>
+        </div>
+      </section>
+
       <section id="challan-form-section" class="card hidden">
         <div class="page-header">
           <button id="btn-back-to-initiate" class="back-btn">← Back</button>
