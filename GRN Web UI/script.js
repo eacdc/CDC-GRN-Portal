@@ -696,7 +696,8 @@
           const orderQty = responseData.OrderQty || responseData.orderqty || 0;
           const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
           const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
-          const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQty || 0;
+          const cartonQtyThisVoucher = responseData.CartonQtyThisVoucher || responseData.cartonqtythisvoucher || responseData.CartonQty || 0;
+          const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || 0;
           const jobName = responseData.JobName || responseData.jobname || '—';
           const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
           
@@ -706,6 +707,7 @@
             <td>${orderQty}</td>
             <td>${packedQtyThisVoucher}</td>
             <td>${packedQtyTotal}</td>
+            <td>${cartonQtyThisVoucher}</td>
             <td>${cartonQtyTotal}</td>
             <td>${jobName}</td>
             <td>${jobBookingNo}</td>
@@ -803,7 +805,8 @@
       const orderQty = responseData.OrderQty || responseData.orderqty || 0;
       const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
       const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
-      const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQty || 0;
+      const cartonQtyThisVoucher = responseData.CartonQtyThisVoucher || responseData.cartonqtythisvoucher || responseData.CartonQty || 0;
+      const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || 0;
       const jobName = responseData.JobName || responseData.jobname || '—';
       const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
 
@@ -816,6 +819,7 @@
           <td>${orderQty}</td>
           <td>${packedQtyThisVoucher}</td>
           <td>${packedQtyTotal}</td>
+          <td>${cartonQtyThisVoucher}</td>
           <td>${cartonQtyTotal}</td>
           <td>${jobName}</td>
           <td>${jobBookingNo}</td>
