@@ -295,6 +295,19 @@
       }
     }
   
+    function scrollBarcodeStatusIntoView() {
+      if (!statusResults) return;
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isMobileViewport = window.innerWidth <= 768;
+      if (!isMobileViewport) return;
+      requestAnimationFrame(() => {
+        statusResults.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'start'
+        });
+      });
+    }
+
     function formatTimestamp(value) {
       if (!value) return '—';
       try {
@@ -330,6 +343,7 @@
             ? `No history available for barcode ${barcodeText}.`
             : 'No history available for the provided barcode.';
         }
+        scrollBarcodeStatusIntoView();
         return;
       }
 
@@ -363,6 +377,7 @@
           ? `${countText} found for barcode ${barcodeText} • ${jobText}`
           : `${countText} found • ${jobText}`;
       }
+      scrollBarcodeStatusIntoView();
     }
   
     // Load transporter options from backend
