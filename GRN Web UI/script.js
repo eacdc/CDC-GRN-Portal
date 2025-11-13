@@ -25,6 +25,27 @@
       }
     }
   
+    function setButtonLoading(button, isLoading, loadingText = 'Loading...') {
+      if (!button) return;
+      if (isLoading) {
+        if (!button.dataset.originalText) {
+          button.dataset.originalText = button.textContent ?? '';
+        }
+        button.disabled = true;
+        button.textContent = loadingText;
+        button.classList.add('btn-loading');
+        button.setAttribute('aria-busy', 'true');
+      } else {
+        button.disabled = false;
+        if (button.dataset.originalText != null) {
+          button.textContent = button.dataset.originalText;
+          delete button.dataset.originalText;
+        }
+        button.classList.remove('btn-loading');
+        button.removeAttribute('aria-busy');
+      }
+    }
+
     // Barcode Status Lookup
     async function runBarcodeStatusLookup(barcodeOverride = null) {
       try {
@@ -65,11 +86,7 @@
             </tr>
           `;
         }
-        if (searchBarcodeStatusBtn) {
-          searchBarcodeStatusBtn.disabled = true;
-          searchBarcodeStatusBtn.dataset.originalText = searchBarcodeStatusBtn.textContent;
-          searchBarcodeStatusBtn.textContent = 'Searching...';
-        }
+        setButtonLoading(searchBarcodeStatusBtn, true, 'Searching...');
   
         const base = getApiBaseUrl();
         const url = new URL('grn/barcode-status', base);
@@ -106,15 +123,7 @@
         if (statusError) statusError.textContent = String(e.message || e);
         if (statusResults) statusResults.hidden = true;
       } finally {
-        if (searchBarcodeStatusBtn) {
-          searchBarcodeStatusBtn.disabled = false;
-          if (searchBarcodeStatusBtn.dataset.originalText) {
-            searchBarcodeStatusBtn.textContent = searchBarcodeStatusBtn.dataset.originalText;
-            delete searchBarcodeStatusBtn.dataset.originalText;
-          } else {
-            searchBarcodeStatusBtn.textContent = 'Search Barcode Status';
-          }
-        }
+        setButtonLoading(searchBarcodeStatusBtn, false);
       }
     }
 
@@ -635,11 +644,7 @@
         return;
       }
 
-      const originalLabel = triggerButton ? triggerButton.textContent : null;
-      if (triggerButton) {
-        triggerButton.disabled = true;
-        triggerButton.textContent = 'Deleting...';
-      }
+      setButtonLoading(triggerButton, true, 'Deleting...');
 
       try {
         const base = getApiBaseUrl();
@@ -679,10 +684,7 @@
       } catch (e) {
         alertWithSiren(String(e.message || e));
       } finally {
-        if (triggerButton) {
-          triggerButton.disabled = false;
-          if (originalLabel != null) triggerButton.textContent = originalLabel;
-        }
+        setButtonLoading(triggerButton, false);
       }
     }
 
@@ -871,6 +873,7 @@
           alert('Please login first.');
           return;
         }
+        setButtonLoading(initiateBtn, true, 'Initiating...');
         try {
           // Call backend to initiate challan
           const base = getApiBaseUrl();
@@ -912,6 +915,8 @@
           } catch(_) {
             alertWithSiren(String(e.message || e));
           }
+        } finally {
+          setButtonLoading(initiateBtn, false);
         }
       });
     }
@@ -956,6 +961,7 @@
           return;
         }
   
+        setButtonLoading(saveChallanBtn, true, 'Saving...');
         try {
           const base = getApiBaseUrl();
           const url = new URL('grn/save-delivery-note', base);
@@ -1001,14 +1007,14 @@
           if (confVehicle) confVehicle.value = data.data.vehicleNumber;
           if (confSeal) confSeal.value = data.data.sealNumber;
           // Don't prefill barcode - leave it empty for user input
-
+  
           if (deliveryDetailsPanel) deliveryDetailsPanel.classList.remove('collapsed');
           if (deliveryDetailsToggle) {
             deliveryDetailsToggle.textContent = '−';
             deliveryDetailsToggle.setAttribute('aria-expanded', 'true');
             deliveryDetailsToggle.setAttribute('aria-label', 'Collapse delivery details');
           }
-
+  
           navigateTo('delivery-confirmation');
   
           // Add first row to table from SP output and form values
@@ -1033,6 +1039,8 @@
           }
         } catch (e) {
           alertWithSiren(String(e.message || e));
+        } finally {
+          setButtonLoading(saveChallanBtn, false);
         }
       });
     }
@@ -1051,6 +1059,7 @@
             const fgId = window.__lastFgTransactionId;
             if (!fgId) { alert('Missing FGTransactionID from initial save. Please save the delivery note first.'); return; }
   
+            setButtonLoading(updateDeliveryNoteBtn, true, 'Updating...');
             const base = getApiBaseUrl();
             const url = new URL('grn/update-delivery-note', base);
             const res = await fetch(url.toString(), {
@@ -1093,6 +1102,8 @@
             if (confBarcode) confBarcode.focus();
       } catch (e) {
         alertWithSiren(String(e.message || e));
+      } finally {
+        setButtonLoading(updateDeliveryNoteBtn, false);
       }
     }
   
@@ -1167,8 +1178,7 @@
         }
   
         if (gpnError) gpnError.textContent = '';
-        submitGpnBtn.disabled = true;
-        submitGpnBtn.textContent = 'Submitting...';
+        setButtonLoading(submitGpnBtn, true, 'Submitting...');
   
         try {
           const base = getApiBaseUrl();
@@ -1252,8 +1262,7 @@
             if (gpnError) gpnError.textContent = errorMsg;
           }
         } finally {
-          submitGpnBtn.disabled = false;
-          submitGpnBtn.textContent = 'Submit';
+          setButtonLoading(submitGpnBtn, false);
         }
       });
     }
@@ -1290,6 +1299,7 @@
           return;
         }
   
+        setButtonLoading(updateGpnBtn, true, 'Updating...');
         const base = getApiBaseUrl();
         const url = new URL('gpn/save-finish-goods', base);
         const res = await fetch(url.toString(), {
@@ -1358,6 +1368,8 @@
         }
       } catch (e) {
         alertWithSiren(String(e.message || e));
+      } finally {
+        setButtonLoading(updateGpnBtn, false);
       }
     }
   
