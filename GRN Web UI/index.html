@@ -103,6 +103,32 @@
       background: rgba(15, 23, 42, 0.8);
     }
 
+    .delivery-table {
+      width: 100%;
+      min-width: 560px;
+      border-collapse: collapse;
+      background: transparent;
+    }
+
+    .delivery-table th {
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted, #a5b4fc);
+      padding: 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .delivery-table td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+      font-size: 12px;
+      color: var(--text, #e2e8f0);
+      white-space: nowrap;
+    }
+
     .status-action-placeholder {
       color: var(--muted, #94a3b8);
       font-style: italic;
@@ -177,6 +203,17 @@
     }
 
     @media (max-width: 640px) {
+      .delivery-table {
+        min-width: 520px;
+        font-size: 10px;
+      }
+
+      .delivery-table th,
+      .delivery-table td {
+        padding: 6px;
+        font-size: 10px;
+      }
+
       .barcode-row {
         position: sticky;
         top: 0;
