@@ -82,6 +82,27 @@
       text-align: right;
     }
 
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 320px;
+    }
+
+    .table-container::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.8);
+    }
+
     .status-action-placeholder {
       color: var(--muted, #94a3b8);
       font-style: italic;
@@ -156,6 +177,18 @@
     }
 
     @media (max-width: 640px) {
+      .barcode-row {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card, #111827);
+        padding-bottom: 12px;
+      }
+
+      .table-container {
+        max-height: 240px;
+      }
+
       .status-table th,
       .status-table td {
         padding: 7px 5px;
