@@ -1208,23 +1208,23 @@
           // Populate first row in table
           if (gpnTableBody) {
             const firstRow = document.createElement('tr');
-            const voucherNo = responseData.VoucherNo || responseData.voucherno || responseData.VoucherNumber || '—';
             const orderQty = responseData.OrderQty || responseData.orderqty || 0;
             const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
             const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
-            const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQty || 0;
+            const cartonQtyThisVoucher = responseData.CartonQtyThisVoucher || responseData.cartonqtythisvoucher || responseData.CartonQty || 0;
+            const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQtyTotal || 0;
             const jobName = responseData.JobName || responseData.jobname || '—';
             const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
             
             firstRow.innerHTML = `
               <td>${barcode}</td>
-              <td>${voucherNo}</td>
-              <td>${orderQty}</td>
+              <td>${cartonQtyThisVoucher}</td>
               <td>${packedQtyThisVoucher}</td>
-              <td>${packedQtyTotal}</td>
+              <td>${orderQty}</td>
               <td>${cartonQtyTotal}</td>
-              <td>${jobName}</td>
+              <td>${packedQtyTotal}</td>
               <td>${jobBookingNo}</td>
+              <td>${jobName}</td>
             `;
             gpnTableBody.innerHTML = '';
             gpnTableBody.appendChild(firstRow);
@@ -1318,11 +1318,11 @@
           session.gpnFgTransactionId = updatedFgTransactionId;
           window.__gpnFgTransactionId = updatedFgTransactionId;
         }
-        const voucherNo = responseData.VoucherNo || responseData.voucherno || responseData.VoucherNumber || '—';
         const orderQty = responseData.OrderQty || responseData.orderqty || 0;
         const packedQtyThisVoucher = responseData.PackedQtyThisVoucher || responseData.packedqtythisvoucher || responseData.PackagedQtyThisVoucher || 0;
         const packedQtyTotal = responseData.PackedQtyTotal || responseData.packedqtytotal || responseData.PackagedQtyTotal || 0;
-        const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQty || 0;
+        const cartonQtyThisVoucher = responseData.CartonQtyThisVoucher || responseData.cartonqtythisvoucher || responseData.CartonQty || 0;
+        const cartonQtyTotal = responseData.CartonQtyTotal || responseData.cartonqtytotal || responseData.CartonQtyTotal || 0;
         const jobName = responseData.JobName || responseData.jobname || '—';
         const jobBookingNo = responseData.JobBookingNo || responseData.jobbookingno || responseData.JobBookingNumber || '—';
   
@@ -1331,13 +1331,13 @@
           const newRow = document.createElement('tr');
           newRow.innerHTML = `
             <td>${barcodeVal}</td>
-            <td>${voucherNo}</td>
-            <td>${orderQty}</td>
+            <td>${cartonQtyThisVoucher}</td>
             <td>${packedQtyThisVoucher}</td>
-            <td>${packedQtyTotal}</td>
+            <td>${orderQty}</td>
             <td>${cartonQtyTotal}</td>
-            <td>${jobName}</td>
+            <td>${packedQtyTotal}</td>
             <td>${jobBookingNo}</td>
+            <td>${jobName}</td>
           `;
           // Insert at the top (prepend) - newest entries always at top
           gpnTableBody.insertBefore(newRow, gpnTableBody.firstChild);
