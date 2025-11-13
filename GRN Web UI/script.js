@@ -26,25 +26,32 @@
     }
   
     // Barcode Status Lookup
-    async function runBarcodeStatusLookup() {
+    async function runBarcodeStatusLookup(barcodeOverride = null) {
       try {
         if (!session || !session.selectedDatabase || !session.userId) {
           if (statusError) statusError.textContent = 'Please login first.';
           return;
         }
   
-        const barcodeVal = String(statusBarcodeInput?.value || '').trim();
-        if (!barcodeVal) {
+        const barcodeInputValue = barcodeOverride != null
+          ? String(barcodeOverride).trim()
+          : String(statusBarcodeInput?.value || '').trim();
+
+        if (!barcodeInputValue) {
           if (statusError) statusError.textContent = 'Enter barcode number';
           if (statusBarcodeInput) statusBarcodeInput.focus();
           return;
         }
   
-        const barcodeNum = Number(barcodeVal);
+        const barcodeNum = Number(barcodeInputValue);
         if (!Number.isFinite(barcodeNum)) {
           if (statusError) statusError.textContent = 'Barcode must be a valid number';
           if (statusBarcodeInput) statusBarcodeInput.focus();
           return;
+        }
+
+        if (barcodeOverride != null && statusBarcodeInput) {
+          statusBarcodeInput.value = barcodeInputValue;
         }
   
         if (statusError) statusError.textContent = '';
@@ -54,7 +61,7 @@
         if (statusTableBody) {
           statusTableBody.innerHTML = `
             <tr class="empty-row">
-              <td colspan="3" class="empty-message">Fetching status history...</td>
+              <td colspan="4" class="empty-message">Fetching status history...</td>
             </tr>
           `;
         }
@@ -226,6 +233,15 @@
       'delivery note': 'status-badge-delivery',
       'dn': 'status-badge-delivery'
     };
+    function normalizeStatusCategory(value) {
+      return String(value || '').toLowerCase().trim();
+    }
+    function getCanonicalStatusCategory(value) {
+      const normalized = normalizeStatusCategory(value);
+      if (normalized === 'goods packing note') return 'gpn';
+      if (normalized === 'dn') return 'delivery note';
+      return normalized;
+    }
     
     // Session storage keys
     const SESSION_KEY = 'grn_session';
@@ -289,7 +305,7 @@
       if (statusTableBody) {
         statusTableBody.innerHTML = `
           <tr class="empty-row">
-            <td colspan="3" class="empty-message">Enter a barcode to view status history.</td>
+            <td colspan="4" class="empty-message">Enter a barcode to view status history.</td>
           </tr>
         `;
       }
@@ -335,7 +351,7 @@
       if (!Array.isArray(records) || records.length === 0) {
         statusTableBody.innerHTML = `
           <tr class="empty-row">
-            <td colspan="3" class="empty-message">No records found${barcodeText ? ` for barcode ${barcodeText}` : ''}.</td>
+            <td colspan="4" class="empty-message">No records found${barcodeText ? ` for barcode ${barcodeText}` : ''}.</td>
           </tr>
         `;
         if (statusResultsSummary) {
@@ -349,21 +365,57 @@
 
       const jobBookingNumbers = new Set();
       statusTableBody.innerHTML = '';
+      const hasDeliveryNote = records.some(record => {
+        const categoryValue = record.Category ?? record.category ?? '—';
+        return getCanonicalStatusCategory(categoryValue) === 'delivery note';
+      });
+
       records.forEach(record => {
         const category = record.Category ?? record.category ?? '—';
         const eventDate = record.EventDate ?? record.eventDate ?? record.event_date ?? record.datetime ?? record.CreatedDate ?? '—';
         const jobBookingNo = record.JobBookingNo ?? record.jobBookingNo ?? record.jobbookingno ?? '—';
         if (jobBookingNo) jobBookingNumbers.add(jobBookingNo);
 
-        const normalizedCategory = String(category || '').toLowerCase().trim();
-        const badgeClass = STATUS_CATEGORY_CLASS_MAP[normalizedCategory] || 'status-badge-default';
+        const normalizedCategory = normalizeStatusCategory(category);
+        const canonicalCategory = getCanonicalStatusCategory(category);
+        const badgeClass = STATUS_CATEGORY_CLASS_MAP[normalizedCategory]
+          || STATUS_CATEGORY_CLASS_MAP[canonicalCategory]
+          || 'status-badge-default';
 
         const row = document.createElement('tr');
-        row.innerHTML = `
-          <td><span class="status-badge ${badgeClass}">${category}</span></td>
-          <td>${formatTimestamp(eventDate)}</td>
-          <td>${jobBookingNo}</td>
-        `;
+        const categoryCell = document.createElement('td');
+        categoryCell.innerHTML = `<span class="status-badge ${badgeClass}">${category}</span>`;
+        const dateCell = document.createElement('td');
+        dateCell.textContent = formatTimestamp(eventDate);
+        const jobCell = document.createElement('td');
+        jobCell.textContent = jobBookingNo;
+        const actionCell = document.createElement('td');
+        actionCell.classList.add('status-action-cell');
+
+        if (canonicalCategory === 'gpn' || canonicalCategory === 'delivery note') {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.type = 'button';
+          deleteBtn.textContent = 'Delete';
+          deleteBtn.className = 'status-delete-btn';
+          const shouldDisableForDependency = canonicalCategory === 'gpn' && hasDeliveryNote;
+          if (shouldDisableForDependency) {
+            deleteBtn.disabled = true;
+            deleteBtn.title = 'Delete the Delivery Note entry first to enable this action.';
+          }
+          const resolvedBarcode = barcodeText ?? (lastStatusBarcode != null ? String(lastStatusBarcode) : '');
+          deleteBtn.addEventListener('click', () => {
+            handleBarcodeStatusDelete(canonicalCategory, resolvedBarcode, deleteBtn);
+          });
+          actionCell.appendChild(deleteBtn);
+        } else {
+          actionCell.textContent = '—';
+          actionCell.classList.add('status-action-placeholder');
+        }
+
+        row.appendChild(categoryCell);
+        row.appendChild(dateCell);
+        row.appendChild(jobCell);
+        row.appendChild(actionCell);
         statusTableBody.appendChild(row);
       });
 
@@ -380,6 +432,80 @@
       scrollBarcodeStatusIntoView();
     }
   
+    async function handleBarcodeStatusDelete(category, barcodeValue, triggerButton) {
+      const canonicalCategory = getCanonicalStatusCategory(category);
+      if (canonicalCategory !== 'gpn' && canonicalCategory !== 'delivery note') return;
+
+      if (!session || !session.selectedDatabase || !session.userId) {
+        alertWithSiren('Please login again before performing delete.');
+        return;
+      }
+
+      const resolvedBarcodeStr = String(barcodeValue || '').trim();
+      const resolvedBarcodeNum = Number(resolvedBarcodeStr);
+
+      if (!resolvedBarcodeStr || !Number.isFinite(resolvedBarcodeNum)) {
+        alertWithSiren('Unable to determine barcode for deletion.');
+        return;
+      }
+
+      const confirmationMessage = canonicalCategory === 'delivery note'
+        ? `Delete Delivery Note entry for barcode ${resolvedBarcodeStr}?`
+        : `Delete GPN entry for barcode ${resolvedBarcodeStr}?`;
+
+      if (!window.confirm(confirmationMessage)) {
+        return;
+      }
+
+      const originalLabel = triggerButton ? triggerButton.textContent : null;
+      if (triggerButton) {
+        triggerButton.disabled = true;
+        triggerButton.textContent = 'Deleting...';
+      }
+
+      try {
+        const base = getApiBaseUrl();
+        const endpoint = canonicalCategory === 'delivery note'
+          ? 'grn/delete-delivery-note'
+          : 'gpn/delete-finish-goods';
+        const url = new URL(endpoint, base);
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            barcode: resolvedBarcodeNum,
+            database: session.selectedDatabase,
+            userId: session.userId,
+            companyId: 2,
+            branchId: 0
+          })
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          throw new Error(t || 'Failed to delete record');
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!data || data.status !== true) {
+          throw new Error(data?.error || 'Failed to delete record');
+        }
+
+        await runBarcodeStatusLookup(resolvedBarcodeNum);
+      } catch (e) {
+        alertWithSiren(String(e.message || e));
+      } finally {
+        if (triggerButton) {
+          triggerButton.disabled = false;
+          if (originalLabel != null) triggerButton.textContent = originalLabel;
+        }
+      }
+    }
+
     // Load transporter options from backend
     async function loadTransporters() {
       try {
