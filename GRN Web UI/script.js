@@ -671,6 +671,8 @@
           throw new Error(data?.error || 'Failed to delete record');
         }
 
+        const friendlyCategory = canonicalCategory === 'delivery note' ? 'Delivery Note' : 'GPN';
+        alert(`${friendlyCategory} entry deleted successfully. Refreshing status data...`);
         await runBarcodeStatusLookup(resolvedBarcodeNum);
       } catch (e) {
         alertWithSiren(String(e.message || e));
