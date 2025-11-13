@@ -205,6 +205,38 @@
       background: rgba(37, 99, 235, 0.08);
     }
 
+    .collapse-toggle {
+      margin-left: auto;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text, #e2e8f0);
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .collapse-toggle:hover {
+      background: rgba(59, 130, 246, 0.24);
+      transform: translateY(-1px);
+    }
+
+    .collapse-toggle:focus-visible {
+      outline: 2px solid rgba(96, 165, 250, 0.7);
+      outline-offset: 2px;
+    }
+
+    .delivery-details-panel.collapsed {
+      display: none;
+    }
+
     @media (max-width: 640px) {
       .card {
         width: 100% !important;
@@ -497,34 +529,37 @@
         <div class="page-header">
           <button id="btn-back-to-form" class="back-btn">← Back</button>
           <h2>Delivery Note Created</h2>
+          <button type="button" id="delivery-details-toggle" class="collapse-toggle" aria-expanded="true" aria-controls="delivery-details-panel" aria-label="Collapse delivery details">−</button>
         </div>
-        <div class="info">
-          <p><strong>Delivery Note Number:</strong> <span id="dn-number"></span></p>
-        </div>
-        <div class="confirmation-grid">
-          <div class="form-row">
-            <label>Client Name</label>
-            <input id="conf-client-name" type="text" readonly />
+        <div id="delivery-details-panel" class="delivery-details-panel">
+          <div class="info">
+            <p><strong>Delivery Note Number:</strong> <span id="dn-number"></span></p>
           </div>
-          <div class="form-row">
-            <label>Mode of Transport</label>
-            <input id="conf-mode-transport" type="text" readonly />
-          </div>
-          <div class="form-row">
-            <label>Transporter Name</label>
-            <input id="conf-transporter" type="text" readonly />
-          </div>
-          <div class="form-row">
-            <label>Container Number</label>
-            <input id="conf-container" type="text" readonly />
-          </div>
-          <div class="form-row">
-            <label>Vehicle Number</label>
-            <input id="conf-vehicle" type="text" readonly />
-          </div>
-          <div class="form-row">
-            <label>Seal Number</label>
-            <input id="conf-seal" type="text" readonly />
+          <div class="confirmation-grid">
+            <div class="form-row">
+              <label>Client Name</label>
+              <input id="conf-client-name" type="text" readonly />
+            </div>
+            <div class="form-row">
+              <label>Mode of Transport</label>
+              <input id="conf-mode-transport" type="text" readonly />
+            </div>
+            <div class="form-row">
+              <label>Transporter Name</label>
+              <input id="conf-transporter" type="text" readonly />
+            </div>
+            <div class="form-row">
+              <label>Container Number</label>
+              <input id="conf-container" type="text" readonly />
+            </div>
+            <div class="form-row">
+              <label>Vehicle Number</label>
+              <input id="conf-vehicle" type="text" readonly />
+            </div>
+            <div class="form-row">
+              <label>Seal Number</label>
+              <input id="conf-seal" type="text" readonly />
+            </div>
           </div>
         </div>
         <div class="form-row barcode-row">
