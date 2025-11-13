@@ -73,6 +73,42 @@
       transition: background 0.2s ease;
     }
 
+    .status-action-cell {
+      width: 120px;
+      text-align: right;
+    }
+
+    .status-action-placeholder {
+      color: var(--muted, #94a3b8);
+      font-style: italic;
+    }
+
+    .status-delete-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .status-delete-btn:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+
+    .status-delete-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      background: rgba(239, 68, 68, 0.45);
+    }
+
     .status-badge {
       display: inline-flex;
       align-items: center;
@@ -292,11 +328,12 @@
                 <th>Category</th>
                 <th>Date &amp; Time</th>
                 <th>Job Booking No</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="status-table-body">
               <tr class="empty-row">
-                <td colspan="3" class="empty-message">Enter a barcode to view status history.</td>
+                <td colspan="4" class="empty-message">Enter a barcode to view status history.</td>
               </tr>
             </tbody>
           </table>
