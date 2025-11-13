@@ -222,6 +222,182 @@
     const backToInitiateBtn = document.getElementById('btn-back-to-initiate');
     const backToFormBtn = document.getElementById('btn-back-to-form');
   
+    const SECTION_MAP = {
+      login: [loginSection],
+      landing: [landingSection],
+      'post-login': [postLoginSection],
+      'challan-form': [challanFormSection],
+      'delivery-confirmation': [deliveryNoteConfirmation],
+      gpn: [gpnSection],
+      'gpn-confirmation': [gpnConfirmation],
+      'barcode-status': [barcodeStatusSection]
+    };
+  
+    const ALL_SECTIONS = Array.from(
+      new Set(
+        Object.values(SECTION_MAP)
+          .flat()
+          .filter(Boolean)
+      )
+    );
+  
+    const VIEW_CONFIG = {
+      login: {
+        sections: SECTION_MAP['login'],
+        onEnter: () => {
+          if (usernameInput) {
+            setTimeout(() => usernameInput.focus(), 0);
+          }
+        }
+      },
+      landing: {
+        sections: SECTION_MAP['landing']
+      },
+      'post-login': {
+        sections: SECTION_MAP['post-login'],
+        onEnter: () => {
+          if (barcodeInput) {
+            setTimeout(() => barcodeInput.focus(), 0);
+          }
+        }
+      },
+      'challan-form': {
+        sections: SECTION_MAP['challan-form']
+      },
+      'delivery-confirmation': {
+        sections: SECTION_MAP['delivery-confirmation'],
+        onEnter: () => {
+          if (confBarcode) {
+            setTimeout(() => confBarcode.focus(), 0);
+          }
+        }
+      },
+      gpn: {
+        sections: SECTION_MAP['gpn'],
+        onEnter: () => {
+          if (gpnBarcodeInput) {
+            setTimeout(() => gpnBarcodeInput.focus(), 0);
+          }
+        }
+      },
+      'gpn-confirmation': {
+        sections: SECTION_MAP['gpn-confirmation'],
+        onEnter: () => {
+          if (gpnConfBarcode) {
+            setTimeout(() => gpnConfBarcode.focus(), 0);
+          }
+        }
+      },
+      'barcode-status': {
+        sections: SECTION_MAP['barcode-status'],
+        onEnter: () => {
+          if (statusBarcodeInput) {
+            setTimeout(() => statusBarcodeInput.focus(), 0);
+          }
+        }
+      }
+    };
+  
+    let currentView = null;
+    let historyDepth = 0;
+  
+    function applyView(view) {
+      const config = VIEW_CONFIG[view];
+      if (!config) return;
+  
+      ALL_SECTIONS.forEach(section => {
+        if (section) section.classList.add('hidden');
+      });
+  
+      (config.sections || []).forEach(section => {
+        if (section) section.classList.remove('hidden');
+      });
+  
+      if (logoutBtn) {
+        if (view === 'login') {
+          logoutBtn.classList.add('hidden');
+        } else {
+          logoutBtn.classList.remove('hidden');
+        }
+      }
+  
+      if (typeof config.onEnter === 'function') {
+        config.onEnter();
+      }
+    }
+  
+    function navigateTo(view, options = {}) {
+      const { replace = false, force = false, skipHistory = false } = options;
+      if (!force && currentView === view) return;
+      if (!VIEW_CONFIG[view]) return;
+  
+      applyView(view);
+      currentView = view;
+  
+      if (skipHistory) return;
+  
+      try {
+        if (replace) {
+          history.replaceState({ view }, document.title, undefined);
+        } else {
+          history.pushState({ view }, document.title, undefined);
+          historyDepth += 1;
+        }
+      } catch (err) {
+        console.warn('Failed to update navigation history:', err);
+      }
+    }
+  
+    function detectInitialView() {
+      const entries = Object.entries(SECTION_MAP);
+      for (const [view, sections] of entries) {
+        if (sections.some(section => section && !section.classList.contains('hidden'))) {
+          return view;
+        }
+      }
+      return 'login';
+    }
+  
+    function initializeNavigation() {
+      currentView = detectInitialView();
+      if (!VIEW_CONFIG[currentView]) {
+        currentView = 'login';
+      }
+      applyView(currentView);
+      try {
+        history.replaceState({ view: currentView }, document.title, undefined);
+      } catch (err) {
+        console.warn('Failed to initialize navigation history:', err);
+      }
+      historyDepth = 0;
+    }
+  
+    function handleBackNavigation(fallbackView) {
+      const target = (!session && fallbackView !== 'login') ? 'login' : fallbackView;
+      if (historyDepth > 0) {
+        history.back();
+      } else {
+        navigateTo(target, { replace: true, force: true });
+      }
+    }
+  
+    window.addEventListener('popstate', (event) => {
+      const stateView = event.state && event.state.view;
+      let targetView = VIEW_CONFIG[stateView] ? stateView : detectInitialView();
+      if (!session && targetView !== 'login') {
+        targetView = 'login';
+      }
+      if (targetView === 'login') {
+        historyDepth = 0;
+      } else if (historyDepth > 0) {
+        historyDepth -= 1;
+      }
+      applyView(targetView);
+      currentView = targetView;
+    });
+  
+    initializeNavigation();
+  
     let session = null; // { userId, ledgerId, machines, selectedDatabase, username }
     let lastStatusBarcode = null;
     const STATUS_CATEGORY_CLASS_MAP = {
@@ -626,9 +802,8 @@
   
       resetBarcodeStatusView();
   
-      if (loginSection) loginSection.classList.add('hidden');
-      if (landingSection) landingSection.classList.remove('hidden');
-      if (logoutBtn) logoutBtn.classList.remove('hidden');
+      navigateTo('landing', { replace: true });
+      historyDepth = 0;
     }
   
     if (loginForm) {
@@ -648,14 +823,9 @@
         // Clear backend session to prevent database conflicts
         await backendLogout();
         
-        // Force all screens to be hidden except login
-        if (landingSection) landingSection.classList.add('hidden');
-        if (postLoginSection) postLoginSection.classList.add('hidden');
-        if (challanFormSection) challanFormSection.classList.add('hidden');
-        if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
-        if (gpnSection) gpnSection.classList.add('hidden');
-        if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
-        if (loginSection) loginSection.classList.remove('hidden');
+        // Force navigation back to login before attempting authentication
+        navigateTo('login', { replace: true, force: true });
+        historyDepth = 0;
         
         // Clear all info displays immediately
         if (infoUsername) infoUsername.textContent = '';
@@ -729,8 +899,7 @@
           session.challanBarcode = Number(barcode);
           
           // Navigate to challan form view
-          if (postLoginSection) postLoginSection.classList.add('hidden');
-          if (challanFormSection) challanFormSection.classList.remove('hidden');
+          navigateTo('challan-form');
           await loadTransporters();
         } catch (e) {
           try {
@@ -829,8 +998,7 @@
           if (confSeal) confSeal.value = data.data.sealNumber;
           // Don't prefill barcode - leave it empty for user input
   
-          if (challanFormSection) challanFormSection.classList.add('hidden');
-          if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.remove('hidden');
+          navigateTo('delivery-confirmation');
   
           // Add first row to table from SP output and form values
           if (deliveryTableBody) {
@@ -956,26 +1124,20 @@
     // Portal navigation handlers
     if (portalGrm) {
       portalGrm.addEventListener('click', () => {
-        if (landingSection) landingSection.classList.add('hidden');
-        if (postLoginSection) postLoginSection.classList.remove('hidden');
-        if (barcodeInput) barcodeInput.focus();
+        navigateTo('post-login');
       });
     }
   
     if (portalGpn) {
       portalGpn.addEventListener('click', () => {
-        if (landingSection) landingSection.classList.add('hidden');
-        if (gpnSection) gpnSection.classList.remove('hidden');
-        if (gpnBarcodeInput) gpnBarcodeInput.focus();
+        navigateTo('gpn');
       });
     }
   
     if (portalBarcodeStatus) {
       portalBarcodeStatus.addEventListener('click', () => {
-        if (landingSection) landingSection.classList.add('hidden');
-        if (barcodeStatusSection) barcodeStatusSection.classList.remove('hidden');
         resetBarcodeStatusView();
-        if (statusBarcodeInput) statusBarcodeInput.focus();
+        navigateTo('barcode-status');
       });
     }
   
@@ -1066,10 +1228,8 @@
             gpnTableBody.appendChild(firstRow);
           }
   
-          // Navigate to confirmation screen
-          if (gpnSection) gpnSection.classList.add('hidden');
-          if (gpnConfirmation) gpnConfirmation.classList.remove('hidden');
-          if (gpnConfBarcode) gpnConfBarcode.focus();
+        // Navigate to confirmation screen
+        navigateTo('gpn-confirmation');
         } catch (e) {
           try {
             const parsed = JSON.parse(e.message);
@@ -1207,44 +1367,37 @@
     // Back button handlers
     if (backToLandingBtn) {
       backToLandingBtn.addEventListener('click', () => {
-        if (postLoginSection) postLoginSection.classList.add('hidden');
-        if (challanFormSection) challanFormSection.classList.add('hidden');
-        if (landingSection) landingSection.classList.remove('hidden');
+        handleBackNavigation('landing');
       });
     }
   
     if (backToLandingGpnBtn) {
       backToLandingGpnBtn.addEventListener('click', () => {
-        if (gpnSection) gpnSection.classList.add('hidden');
-        if (landingSection) landingSection.classList.remove('hidden');
+        handleBackNavigation('landing');
       });
     }
   
     if (backToLandingStatusBtn) {
       backToLandingStatusBtn.addEventListener('click', () => {
-        if (barcodeStatusSection) barcodeStatusSection.classList.add('hidden');
-        if (landingSection) landingSection.classList.remove('hidden');
+        handleBackNavigation('landing');
       });
     }
   
     if (backToGpnFormBtn) {
       backToGpnFormBtn.addEventListener('click', () => {
-        if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
-        if (gpnSection) gpnSection.classList.remove('hidden');
+        handleBackNavigation('gpn');
       });
     }
   
     if (backToInitiateBtn) {
       backToInitiateBtn.addEventListener('click', () => {
-        if (challanFormSection) challanFormSection.classList.add('hidden');
-        if (postLoginSection) postLoginSection.classList.remove('hidden');
+        handleBackNavigation('post-login');
       });
     }
   
     if (backToFormBtn) {
       backToFormBtn.addEventListener('click', () => {
-        if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
-        if (challanFormSection) challanFormSection.classList.remove('hidden');
+        handleBackNavigation('challan-form');
       });
     }
   
@@ -1279,9 +1432,8 @@
         if (infoDatabaseStatus) infoDatabaseStatus.textContent = savedSession.selectedDatabase;
         
         // Show landing page
-        if (loginSection) loginSection.classList.add('hidden');
-        if (landingSection) landingSection.classList.remove('hidden');
-        if (logoutBtn) logoutBtn.classList.remove('hidden');
+        navigateTo('landing', { replace: true, force: true });
+        historyDepth = 0;
         
         return true;
       }
@@ -1325,14 +1477,8 @@
             if (infoDatabaseGpn) infoDatabaseGpn.textContent = '';
             
             // Reset UI to login screen
-            if (landingSection) landingSection.classList.add('hidden');
-            if (postLoginSection) postLoginSection.classList.add('hidden');
-            if (challanFormSection) challanFormSection.classList.add('hidden');
-            if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
-            if (gpnSection) gpnSection.classList.add('hidden');
-            if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
-            if (loginSection) loginSection.classList.remove('hidden');
-            if (logoutBtn) logoutBtn.classList.add('hidden');
+            navigateTo('login', { replace: true, force: true });
+            historyDepth = 0;
             
             alert('You have been logged out because a new login was detected in another tab.');
           }
@@ -1374,15 +1520,8 @@
       if (infoDatabaseStatus) infoDatabaseStatus.textContent = '';
       
       // Reset UI to login screen
-      if (landingSection) landingSection.classList.add('hidden');
-      if (postLoginSection) postLoginSection.classList.add('hidden');
-      if (challanFormSection) challanFormSection.classList.add('hidden');
-      if (deliveryNoteConfirmation) deliveryNoteConfirmation.classList.add('hidden');
-      if (gpnSection) gpnSection.classList.add('hidden');
-      if (gpnConfirmation) gpnConfirmation.classList.add('hidden');
-      if (barcodeStatusSection) barcodeStatusSection.classList.add('hidden');
-      if (loginSection) loginSection.classList.remove('hidden');
-      if (logoutBtn) logoutBtn.classList.add('hidden');
+      navigateTo('login', { replace: true, force: true });
+      historyDepth = 0;
       if (usernameInput) usernameInput.focus();
       resetBarcodeStatusView();
     }
