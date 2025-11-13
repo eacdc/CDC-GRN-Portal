@@ -937,6 +937,8 @@
         const vehicleNumber = String(vehicleNumberInput?.value || '').trim();
         // Find ledgerId for selected transporter name from current dropdown options using dataset if available later
         let transporterLedgerId = null;
+
+        setButtonLoading(saveChallanBtn, true, 'Saving...');
         try {
           // Attempt to fetch ledgerId list fresh to resolve selected name
           const base = getApiBaseUrl();
@@ -948,20 +950,23 @@
             const match = dataT.transporters.find(t => String(t.ledgerName).trim() === transporterName);
             transporterLedgerId = match ? match.ledgerId : null;
           }
-        } catch (_) {}
-  
+        } catch (_) {
+          // ignore transporters fetch failure; button state will reset below
+        }
+
         if (!transporterLedgerId) {
           alert('Could not resolve selected transporter. Please re-select transporter.');
+          setButtonLoading(saveChallanBtn, false);
           return;
         }
-  
+
         // Validate required fields
         if (!clientName || !modeOfTransport || !containerNumber || !sealNumber || !transporterName || !vehicleNumber) {
           alert('All fields are mandatory. Please fill in all required information.');
+          setButtonLoading(saveChallanBtn, false);
           return;
         }
-  
-        setButtonLoading(saveChallanBtn, true, 'Saving...');
+
         try {
           const base = getApiBaseUrl();
           const url = new URL('grn/save-delivery-note', base);
