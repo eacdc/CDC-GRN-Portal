@@ -1028,12 +1028,12 @@
             const row = document.createElement('tr');
             row.innerHTML = `
               <td>${data?.data?.barcode ?? session?.challanBarcode ?? ''}</td>
+              <td>${sp.cartonCount ?? '—'}</td>
               <td>${sp.jobName ?? '—'}</td>
               <td>${sp.orderQty ?? '—'}</td>
               <td>${sp.gpnQty ?? '—'}</td>
               <td>${sp.deliveredThisVoucher ?? '—'}</td>
               <td>${sp.deliveredTotal ?? '—'}</td>
-              <td>${sp.cartonCount ?? '—'}</td>
             `;
             deliveryTableBody.innerHTML = '';
             deliveryTableBody.appendChild(row);
@@ -1093,12 +1093,12 @@
               const newRow = document.createElement('tr');
               newRow.innerHTML = `
                 <td>${barcodeVal}</td>
+                <td>${sp.cartonCount ?? '—'}</td>
                 <td>${sp.jobName ?? '—'}</td>
                 <td>${sp.orderQty ?? '—'}</td>
                 <td>${sp.gpnQty ?? '—'}</td>
-              <td>${sp.deliveredThisVoucher ?? '—'}</td>
+                <td>${sp.deliveredThisVoucher ?? '—'}</td>
                 <td>${sp.deliveredTotal ?? '—'}</td>
-                <td>${sp.cartonCount ?? '—'}</td>
               `;
               deliveryTableBody.insertBefore(newRow, deliveryTableBody.firstChild);
             }
