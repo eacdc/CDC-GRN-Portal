@@ -215,6 +215,8 @@
     const confBarcode = document.getElementById('conf-barcode');
     const updateDeliveryNoteBtn = document.getElementById('btn-update-delivery-note');
     const deliveryTableBody = document.getElementById('delivery-table-body');
+    const deliveryDetailsPanel = document.getElementById('delivery-details-panel');
+    const deliveryDetailsToggle = document.getElementById('delivery-details-toggle');
     const statusBarcodeInput = document.getElementById('status-barcode');
     const searchBarcodeStatusBtn = document.getElementById('btn-search-barcode-status');
     const statusError = document.getElementById('status-error');
@@ -999,7 +1001,14 @@
           if (confVehicle) confVehicle.value = data.data.vehicleNumber;
           if (confSeal) confSeal.value = data.data.sealNumber;
           // Don't prefill barcode - leave it empty for user input
-  
+
+          if (deliveryDetailsPanel) deliveryDetailsPanel.classList.remove('collapsed');
+          if (deliveryDetailsToggle) {
+            deliveryDetailsToggle.textContent = '−';
+            deliveryDetailsToggle.setAttribute('aria-expanded', 'true');
+            deliveryDetailsToggle.setAttribute('aria-label', 'Collapse delivery details');
+          }
+
           navigateTo('delivery-confirmation');
   
           // Add first row to table from SP output and form values
@@ -1402,7 +1411,16 @@
         handleBackNavigation('challan-form');
       });
     }
-  
+
+    if (deliveryDetailsToggle && deliveryDetailsPanel) {
+      deliveryDetailsToggle.addEventListener('click', () => {
+        const isCollapsed = deliveryDetailsPanel.classList.toggle('collapsed');
+        deliveryDetailsToggle.textContent = isCollapsed ? '+' : '−';
+        deliveryDetailsToggle.setAttribute('aria-expanded', (!isCollapsed).toString());
+        deliveryDetailsToggle.setAttribute('aria-label', isCollapsed ? 'Expand delivery details' : 'Collapse delivery details');
+      });
+    }
+
     if (searchBarcodeStatusBtn) {
       searchBarcodeStatusBtn.addEventListener('click', () => { runBarcodeStatusLookup(); });
     }
@@ -1520,6 +1538,13 @@
       if (infoDatabaseGpn) infoDatabaseGpn.textContent = '';
       if (infoUsernameStatus) infoUsernameStatus.textContent = '';
       if (infoDatabaseStatus) infoDatabaseStatus.textContent = '';
+      
+      if (deliveryDetailsPanel) deliveryDetailsPanel.classList.remove('collapsed');
+      if (deliveryDetailsToggle) {
+        deliveryDetailsToggle.textContent = '−';
+        deliveryDetailsToggle.setAttribute('aria-expanded', 'true');
+        deliveryDetailsToggle.setAttribute('aria-label', 'Collapse delivery details');
+      }
       
       // Reset UI to login screen
       navigateTo('login', { replace: true, force: true });
