@@ -182,6 +182,24 @@
     const gpnConfirmation = document.getElementById('gpn-confirmation');
     const barcodeStatusSection = document.getElementById('barcode-status-section');
     const deliveryAmountSection = document.getElementById('delivery-amount-section');
+    // --- Pending GPNs for Delivery Note ---
+    const pendingGpnsSection = document.getElementById('pending-gpns-section');
+    const infoUsernamePendingGpns = document.getElementById('info-username-pending-gpns');
+    const infoDatabasePendingGpns = document.getElementById('info-database-pending-gpns');
+    const portalPendingGpns = document.getElementById('portal-pending-gpns');
+    const pendingGpnsError = document.getElementById('pending-gpns-error');
+    const pendingGpnsTableBody = document.getElementById('pending-gpns-table-body');
+    const backToLandingPendingGpnsBtn = document.getElementById('btn-back-to-landing-pending-gpns');
+    const pendingGpnsFromDateInput = document.getElementById('pending-gpns-from-date');
+    const pendingGpnsToDateInput = document.getElementById('pending-gpns-to-date');
+    const pendingGpnsSearchBtn = document.getElementById('btn-pending-gpns-search');
+    const filterPendingGpnsBarcode = document.getElementById('filter-pending-gpns-barcode');
+    const filterPendingGpnsJobNumber = document.getElementById('filter-pending-gpns-job-number');
+    const filterPendingGpnsJobName = document.getElementById('filter-pending-gpns-job-name');
+    const filterPendingGpnsClient = document.getElementById('filter-pending-gpns-client');
+    const filterPendingGpnsGpnNo = document.getElementById('filter-pending-gpns-gpn-no');
+    const filterPendingGpnsGpnDate = document.getElementById('filter-pending-gpns-gpn-date');
+    const filterPendingGpnsDays = document.getElementById('filter-pending-gpns-days');
     // --- Challan Detail ---
     const challanDetailSection = document.getElementById('challan-detail-section');
     const infoUsernameChallanDetail = document.getElementById('info-username-challan-detail');
@@ -302,6 +320,7 @@
       'gpn-confirmation': [gpnConfirmation],
       'barcode-status': [barcodeStatusSection],
       'delivery-amount': [deliveryAmountSection],
+      'pending-gpns': [pendingGpnsSection],
       'challan-detail': [challanDetailSection],
       'challan-update': [challanUpdateSection]
     };
@@ -371,6 +390,9 @@
       },
       'delivery-amount': {
         sections: SECTION_MAP['delivery-amount']
+      },
+      'pending-gpns': {
+        sections: SECTION_MAP['pending-gpns']
       },
       'challan-detail': {
         sections: SECTION_MAP['challan-detail']
@@ -494,6 +516,16 @@
       deliveryAmount: ''
     };
     let deliveryAmountMode = 'pending';
+    let pendingGpnsRows = [];
+    let pendingGpnsFilters = {
+      barcodeNo: '',
+      jobNumber: '',
+      jobName: '',
+      clientName: '',
+      gpnNo: '',
+      gpnDate: '',
+      daysPending: ''
+    };
     let challanDetailRows = [];
     let challanDetailSelectedFgId = null;
     let challanDetailPageSize = 100;
@@ -895,6 +927,201 @@
     function setChallanDetailSessionInfo(username, database) {
       if (infoUsernameChallanDetail) infoUsernameChallanDetail.textContent = username || '';
       if (infoDatabaseChallanDetail) infoDatabaseChallanDetail.textContent = database || '';
+    }
+
+    function setPendingGpnsSessionInfo(username, database) {
+      if (infoUsernamePendingGpns) infoUsernamePendingGpns.textContent = username || '';
+      if (infoDatabasePendingGpns) infoDatabasePendingGpns.textContent = database || '';
+    }
+
+    function setDefaultPendingGpnsDateRange() {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - 7);
+      if (pendingGpnsFromDateInput) pendingGpnsFromDateInput.value = formatDateForInput(from);
+      if (pendingGpnsToDateInput) pendingGpnsToDateInput.value = formatDateForInput(to);
+    }
+
+    function getPendingGpnsDateRangeParams() {
+      const fromDate = String(pendingGpnsFromDateInput?.value || '').trim();
+      const toDate = String(pendingGpnsToDateInput?.value || '').trim();
+      if (!fromDate || !toDate) {
+        throw new Error('Please select From Date and To Date.');
+      }
+      return { fromDate, toDate };
+    }
+
+    function resetPendingGpnsView() {
+      pendingGpnsRows = [];
+      pendingGpnsFilters = {
+        barcodeNo: '',
+        jobNumber: '',
+        jobName: '',
+        clientName: '',
+        gpnNo: '',
+        gpnDate: '',
+        daysPending: ''
+      };
+      if (filterPendingGpnsBarcode) filterPendingGpnsBarcode.value = '';
+      if (filterPendingGpnsJobNumber) filterPendingGpnsJobNumber.value = '';
+      if (filterPendingGpnsJobName) filterPendingGpnsJobName.value = '';
+      if (filterPendingGpnsClient) filterPendingGpnsClient.value = '';
+      if (filterPendingGpnsGpnNo) filterPendingGpnsGpnNo.value = '';
+      if (filterPendingGpnsGpnDate) filterPendingGpnsGpnDate.value = '';
+      if (filterPendingGpnsDays) filterPendingGpnsDays.value = '';
+      if (pendingGpnsError) pendingGpnsError.textContent = '';
+      setDefaultPendingGpnsDateRange();
+      if (pendingGpnsTableBody) {
+        pendingGpnsTableBody.innerHTML = `
+          <tr class="empty-row">
+            <td colspan="7" class="empty-message">Select From Date and To Date, then click Search.</td>
+          </tr>
+        `;
+      }
+    }
+
+    function mapApiRecordToPendingGpnRow(record) {
+      return {
+        barcodeNo: pickChallanRecordField(record, 'barcodeNo', 'BarcodeNo', 'Barcode') ?? null,
+        jobNumber: pickChallanRecordField(record, 'jobNumber', 'JobNumber', 'JobBookingNo') ?? null,
+        jobName: pickChallanRecordField(record, 'jobName', 'JobName') ?? null,
+        clientName: pickChallanRecordField(record, 'clientName', 'ClientName', 'LedgerName') ?? null,
+        gpnNo: pickChallanRecordField(record, 'gpnNo', 'GPNNo', 'VoucherNo') ?? null,
+        gpnDate: pickChallanRecordField(record, 'gpnDate', 'GPNDate', 'CreatedDate') ?? null,
+        daysPending: (() => {
+          const raw = pickChallanRecordField(record, 'daysPending', 'DaysPending');
+          return raw != null && Number.isFinite(Number(raw)) ? Number(raw) : null;
+        })()
+      };
+    }
+
+    function getFilteredPendingGpnsRows(rows = []) {
+      const f = pendingGpnsFilters;
+      return rows.filter((row) => {
+        const barcodeNo = String(row.barcodeNo ?? '').toLowerCase();
+        const jobNumber = String(row.jobNumber ?? '').toLowerCase();
+        const jobName = String(row.jobName ?? '').toLowerCase();
+        const clientName = String(row.clientName ?? '').toLowerCase();
+        const gpnNo = String(row.gpnNo ?? '').toLowerCase();
+        const gpnDate = row.gpnDate ? formatVoucherDate(row.gpnDate).toLowerCase() : '';
+        const daysPending = row.daysPending == null ? '' : String(row.daysPending).toLowerCase();
+        if (f.barcodeNo && !barcodeNo.includes(f.barcodeNo)) return false;
+        if (f.jobNumber && !jobNumber.includes(f.jobNumber)) return false;
+        if (f.jobName && !jobName.includes(f.jobName)) return false;
+        if (f.clientName && !clientName.includes(f.clientName)) return false;
+        if (f.gpnNo && !gpnNo.includes(f.gpnNo)) return false;
+        if (f.gpnDate && !gpnDate.includes(f.gpnDate)) return false;
+        if (f.daysPending && !daysPending.includes(f.daysPending)) return false;
+        return true;
+      });
+    }
+
+    function renderPendingGpnsRows(rows = []) {
+      if (!pendingGpnsTableBody) return;
+      const filtered = getFilteredPendingGpnsRows(rows);
+      if (!filtered.length) {
+        pendingGpnsTableBody.innerHTML = `
+          <tr class="empty-row">
+            <td colspan="7" class="empty-message">${rows.length ? 'No rows match the current filters.' : 'No pending GPNs found for the selected dates.'}</td>
+          </tr>
+        `;
+        return;
+      }
+      pendingGpnsTableBody.innerHTML = '';
+      filtered.forEach((row) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.barcodeNo ?? '—'}</td>
+          <td>${row.jobNumber ?? '—'}</td>
+          <td>${row.jobName ?? '—'}</td>
+          <td>${row.clientName ?? '—'}</td>
+          <td>${row.gpnNo ?? '—'}</td>
+          <td>${row.gpnDate ? formatVoucherDate(row.gpnDate) : '—'}</td>
+          <td>${row.daysPending == null ? '—' : row.daysPending}</td>
+        `;
+        pendingGpnsTableBody.appendChild(tr);
+      });
+    }
+
+    async function loadPendingGpnsRows() {
+      try {
+        if (!session || !session.selectedDatabase) {
+          if (pendingGpnsError) pendingGpnsError.textContent = 'Please login first.';
+          return;
+        }
+        const { fromDate, toDate } = getPendingGpnsDateRangeParams();
+        if (pendingGpnsError) pendingGpnsError.textContent = '';
+        if (pendingGpnsTableBody) {
+          pendingGpnsTableBody.innerHTML = `
+            <tr class="empty-row">
+              <td colspan="7" class="empty-message">Loading pending GPNs...</td>
+            </tr>
+          `;
+        }
+        setButtonLoading(pendingGpnsSearchBtn, true, 'Searching...');
+        const base = getApiBaseUrl();
+        const url = new URL('grn/pending-gpns-for-delivery-note', base);
+        url.searchParams.set('database', session.selectedDatabase);
+        url.searchParams.set('fromDate', fromDate);
+        url.searchParams.set('toDate', toDate);
+        url.searchParams.set('companyId', '2');
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          let message = t || 'Failed to fetch pending GPNs';
+          try {
+            const parsed = JSON.parse(t);
+            if (parsed?.error) message = parsed.error;
+          } catch (_) {
+            // keep raw text
+          }
+          throw new Error(message);
+        }
+        const data = await res.json();
+        if (!data || data.status !== true || !Array.isArray(data.records)) {
+          throw new Error(data?.error || 'Failed to fetch pending GPNs');
+        }
+        pendingGpnsRows = data.records.map(mapApiRecordToPendingGpnRow);
+        renderPendingGpnsRows(pendingGpnsRows);
+      } catch (e) {
+        if (pendingGpnsError) pendingGpnsError.textContent = String(e.message || e);
+        pendingGpnsRows = [];
+        renderPendingGpnsRows([]);
+      } finally {
+        setButtonLoading(pendingGpnsSearchBtn, false);
+      }
+    }
+
+    function bindPendingGpnsFilters() {
+      const updateFiltersAndRender = () => {
+        pendingGpnsFilters = {
+          barcodeNo: String(filterPendingGpnsBarcode?.value || '').trim().toLowerCase(),
+          jobNumber: String(filterPendingGpnsJobNumber?.value || '').trim().toLowerCase(),
+          jobName: String(filterPendingGpnsJobName?.value || '').trim().toLowerCase(),
+          clientName: String(filterPendingGpnsClient?.value || '').trim().toLowerCase(),
+          gpnNo: String(filterPendingGpnsGpnNo?.value || '').trim().toLowerCase(),
+          gpnDate: String(filterPendingGpnsGpnDate?.value || '').trim().toLowerCase(),
+          daysPending: String(filterPendingGpnsDays?.value || '').trim().toLowerCase()
+        };
+        renderPendingGpnsRows(pendingGpnsRows);
+      };
+      [
+        filterPendingGpnsBarcode,
+        filterPendingGpnsJobNumber,
+        filterPendingGpnsJobName,
+        filterPendingGpnsClient,
+        filterPendingGpnsGpnNo,
+        filterPendingGpnsGpnDate,
+        filterPendingGpnsDays
+      ].forEach((el) => {
+        if (!el) return;
+        el.addEventListener('input', updateFiltersAndRender);
+      });
     }
 
     function formatDateForInput(date) {
@@ -1892,7 +2119,9 @@
       resetBarcodeStatusView();
       resetDeliveryAmountView();
       resetChallanDetailView();
+      resetPendingGpnsView();
       setChallanDetailSessionInfo(username, data.selectedDatabase);
+      setPendingGpnsSessionInfo(username, data.selectedDatabase);
   
       navigateTo('landing', { replace: true });
       historyDepth = 0;
@@ -2285,6 +2514,25 @@
       });
     }
 
+    if (portalPendingGpns) {
+      portalPendingGpns.addEventListener('click', () => {
+        resetPendingGpnsView();
+        navigateTo('pending-gpns');
+      });
+    }
+
+    if (backToLandingPendingGpnsBtn) {
+      backToLandingPendingGpnsBtn.addEventListener('click', () => {
+        handleBackNavigation('landing');
+      });
+    }
+
+    if (pendingGpnsSearchBtn) {
+      pendingGpnsSearchBtn.addEventListener('click', async () => {
+        await loadPendingGpnsRows();
+      });
+    }
+
     if (backToLandingChallanDetailBtn) {
       backToLandingChallanDetailBtn.addEventListener('click', () => {
         handleBackNavigation('landing');
@@ -2636,6 +2884,7 @@
 
     bindDeliveryAmountFilters();
     bindChallanDetailFilters();
+    bindPendingGpnsFilters();
   
     // Restore session on page load
     function restoreSession() {
@@ -2656,6 +2905,7 @@
         if (infoUsernameDeliveryAmount) infoUsernameDeliveryAmount.textContent = savedSession.username;
         if (infoDatabaseDeliveryAmount) infoDatabaseDeliveryAmount.textContent = savedSession.selectedDatabase;
         setChallanDetailSessionInfo(savedSession.username, savedSession.selectedDatabase);
+        setPendingGpnsSessionInfo(savedSession.username, savedSession.selectedDatabase);
         
         // Show landing page
         navigateTo('landing', { replace: true, force: true });
@@ -2664,6 +2914,7 @@
         return true;
       }
       resetBarcodeStatusView();
+      resetPendingGpnsView();
       return false;
     }
     
