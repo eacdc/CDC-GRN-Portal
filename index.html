@@ -273,7 +273,8 @@
 
     #delivery-amount-section,
     #challan-detail-section,
-    #challan-update-section {
+    #challan-update-section,
+    #pending-gpns-section {
       width: min(1800px, 98vw);
       max-width: 98vw;
     }
@@ -748,6 +749,12 @@
               <p class="portal-description">View processed delivery notes</p>
             </div>
           </div>
+          <div class="portal-card" id="portal-pending-gpns">
+            <div class="portal-card-content">
+              <h3>GPNs Pending for Delivery Note</h3>
+              <p class="portal-description">GPNs waiting for delivery note</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -805,6 +812,64 @@
         </div>
       </section>
 
+      <section id="pending-gpns-section" class="card delivery-note-card hidden">
+        <div class="page-header">
+          <button id="btn-back-to-landing-pending-gpns" class="back-btn">← Back</button>
+          <h2>GPNs Pending for Delivery Note</h2>
+        </div>
+        <div class="challan-toolbar">
+          <div class="challan-toolbar-item">
+            <strong>User:</strong>
+            <span id="info-username-pending-gpns"></span>
+          </div>
+          <div class="challan-toolbar-item">
+            <strong>Database:</strong>
+            <span id="info-database-pending-gpns"></span>
+          </div>
+          <div class="challan-date-row">
+            <div class="challan-date-field">
+              <label for="pending-gpns-from-date">From Date</label>
+              <input id="pending-gpns-from-date" type="date" />
+            </div>
+            <div class="challan-date-field">
+              <label for="pending-gpns-to-date">To Date</label>
+              <input id="pending-gpns-to-date" type="date" />
+            </div>
+            <button id="btn-pending-gpns-search" type="button">Search</button>
+          </div>
+        </div>
+        <p id="pending-gpns-error" class="error" aria-live="polite"></p>
+        <div class="table-container challan-detail-table-container">
+          <table class="delivery-table challan-detail-table">
+            <thead>
+              <tr>
+                <th>Barcode No</th>
+                <th>Job Number</th>
+                <th>Job Name</th>
+                <th>Client Name</th>
+                <th>GPN No</th>
+                <th>GPN Date</th>
+                <th>Days Pending</th>
+              </tr>
+              <tr class="delivery-filter-row">
+                <th><input id="filter-pending-gpns-barcode" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-pending-gpns-job-number" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-pending-gpns-job-name" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-pending-gpns-client" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-pending-gpns-gpn-no" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-pending-gpns-gpn-date" class="delivery-filter-input" type="text" placeholder="dd/mm/yyyy" /></th>
+                <th><input id="filter-pending-gpns-days" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+              </tr>
+            </thead>
+            <tbody id="pending-gpns-table-body">
+              <tr class="empty-row">
+                <td colspan="7" class="empty-message">Select From Date and To Date, then click Search.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section id="challan-detail-section" class="card delivery-note-card hidden">
         <div class="page-header">
           <button id="btn-back-to-landing-challan-detail" class="back-btn">← Back</button>
@@ -844,6 +909,8 @@
                 <th>PO Date</th>
                 <th>Total Delivrd Cartons</th>
                 <th>Total Qty</th>
+                <th>Job Delivered Carton</th>
+                <th>Job Qty</th>
                 <th>Update Challan Details</th>
               </tr>
               <tr class="delivery-filter-row">
@@ -854,12 +921,14 @@
                 <th><input id="filter-challan-po-date" class="delivery-filter-input" type="text" placeholder="dd/mm/yyyy" /></th>
                 <th><input id="filter-challan-cartons" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
                 <th><input id="filter-challan-qty" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-challan-job-cartons" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
+                <th><input id="filter-challan-job-qty" class="delivery-filter-input" type="text" placeholder="Filter" /></th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="challan-detail-table-body">
               <tr class="empty-row">
-                <td colspan="8" class="empty-message">Open this page to load delivery notes.</td>
+                <td colspan="10" class="empty-message">Open this page to load delivery notes.</td>
               </tr>
             </tbody>
           </table>
