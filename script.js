@@ -1430,7 +1430,7 @@
         const selectedId = selectedLedgerId != null ? String(selectedLedgerId) : '';
         challanUpdateConsignee.innerHTML = '<option value="">Select --</option>' + consignees.map((c) => {
           const id = String(c.ledgerId ?? '');
-          const name = String(c.ledgerName ?? '').trim();
+          const name = String(c.displayName || c.ledgerName || '').trim();
           const selected = id && id === selectedId ? ' selected' : '';
           return `<option value="${id}"${selected}>${name}</option>`;
         }).join('');
