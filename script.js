@@ -1380,7 +1380,10 @@
       if (challanUpdateSubtitle) challanUpdateSubtitle.textContent = '';
       if (challanUpdateError) challanUpdateError.textContent = '';
       if (challanUpdateClientName) challanUpdateClientName.value = '';
-      if (challanUpdateConsignee) challanUpdateConsignee.innerHTML = '<option value="">Select --</option>';
+      if (challanUpdateConsignee) {
+        challanUpdateConsignee.innerHTML = '<option value="">Select --</option>';
+        challanUpdateConsignee.title = '';
+      }
       if (challanUpdateMode) challanUpdateMode.value = '';
       if (challanUpdateTransporter) challanUpdateTransporter.innerHTML = '<option value="">Select --</option>';
       if (challanUpdateVehicle) challanUpdateVehicle.value = '';
@@ -1417,6 +1420,21 @@
       }
     }
 
+    function escapeHtmlAttr(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function syncChallanConsigneeTooltip() {
+      if (!challanUpdateConsignee) return;
+      const selected = challanUpdateConsignee.options[challanUpdateConsignee.selectedIndex];
+      const fullText = String(selected?.textContent || '').trim();
+      challanUpdateConsignee.title = fullText && fullText !== 'Select --' ? fullText : '';
+    }
+
     async function loadChallanUpdateConsignees(selectedLedgerId, selectedName) {
       if (!challanUpdateConsignee || !session?.selectedDatabase) return [];
       challanUpdateConsignee.innerHTML = '<option value="">Loading...</option>';
@@ -1432,14 +1450,19 @@
           const id = String(c.ledgerId ?? '');
           const name = String(c.displayName || c.ledgerName || '').trim();
           const selected = id && id === selectedId ? ' selected' : '';
-          return `<option value="${id}"${selected}>${name}</option>`;
+          const safeName = escapeHtmlAttr(name);
+          return `<option value="${id}" title="${safeName}"${selected}>${safeName}</option>`;
         }).join('');
         if (selectedId && !consignees.some((c) => String(c.ledgerId) === selectedId) && selectedName) {
-          challanUpdateConsignee.innerHTML += `<option value="${selectedId}" selected>${selectedName}</option>`;
+          const fallback = String(selectedName).trim();
+          const safeFallback = escapeHtmlAttr(fallback);
+          challanUpdateConsignee.innerHTML += `<option value="${selectedId}" title="${safeFallback}" selected>${safeFallback}</option>`;
         }
+        syncChallanConsigneeTooltip();
         return consignees;
       } catch (_) {
         challanUpdateConsignee.innerHTML = '<option value="">Select --</option>';
+        challanUpdateConsignee.title = '';
         return [];
       }
     }
@@ -2594,6 +2617,10 @@
         renderChallanDetailRows(challanDetailRows);
       });
     });
+
+    if (challanUpdateConsignee) {
+      challanUpdateConsignee.addEventListener('change', syncChallanConsigneeTooltip);
+    }
 
     if (challanUpdateCloseBtn) {
       challanUpdateCloseBtn.addEventListener('click', () => {
