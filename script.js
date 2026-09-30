@@ -217,6 +217,7 @@
     const challanFromDateInput = document.getElementById('challan-from-date');
     const challanToDateInput = document.getElementById('challan-to-date');
     const challanRefreshBtn = document.getElementById('btn-challan-refresh');
+    const challanExportExcelBtn = document.getElementById('btn-challan-export-excel');
     const challanDownloadPdfBtn = document.getElementById('btn-challan-download-pdf');
     const filterChallanDnNo = document.getElementById('filter-challan-dn-no');
     const filterChallanDnDate = document.getElementById('filter-challan-dn-date');
@@ -1551,6 +1552,83 @@
       }
     }
 
+    function escapeXml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function excelCell(value, type = 'String') {
+      if (value == null || value === '') {
+        return '<Cell><Data ss:Type="String"></Data></Cell>';
+      }
+      if (type === 'Number' && Number.isFinite(Number(value))) {
+        return `<Cell><Data ss:Type="Number">${Number(value)}</Data></Cell>`;
+      }
+      return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+    }
+
+    function exportChallanDetailExcel() {
+      const rows = getFilteredChallanDetailRows(challanDetailRows);
+      if (!rows.length) {
+        alert('No challan records to export. Refresh or adjust filters first.');
+        return;
+      }
+
+      const headers = [
+        'Delivery Note No.',
+        'Delivery Note Date',
+        'Client Name',
+        'Job Booking No.',
+        'PO Date',
+        'Total Delivrd Cartons',
+        'Total Qty',
+        'Job Delivered Carton',
+        'Job Qty'
+      ];
+
+      const headerRow = `<Row>${headers.map((h) => excelCell(h)).join('')}</Row>`;
+      const dataRows = rows.map((row) => {
+        const cells = [
+          excelCell(row.deliveryNoteNo ?? ''),
+          excelCell(row.deliveryNoteDate ? formatVoucherDate(row.deliveryNoteDate) : ''),
+          excelCell(row.clientName ?? ''),
+          excelCell(row.jobBookingNo ?? ''),
+          excelCell(row.poDate ? formatVoucherDate(row.poDate) : ''),
+          excelCell(row.totalDeliveredCartons, 'Number'),
+          excelCell(row.totalQty, 'Number'),
+          excelCell(row.jobDeliveredCarton, 'Number'),
+          excelCell(row.jobQty, 'Number')
+        ];
+        return `<Row>${cells.join('')}</Row>`;
+      }).join('');
+
+      const xml = [
+        '<?xml version="1.0"?>',
+        '<?mso-application progid="Excel.Sheet"?>',
+        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+        ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
+        '<Worksheet ss:Name="Challan Detail">',
+        `<Table>${headerRow}${dataRows}</Table>`,
+        '</Worksheet>',
+        '</Workbook>'
+      ].join('');
+
+      const fromDate = String(challanFromDateInput?.value || '').trim() || 'from';
+      const toDate = String(challanToDateInput?.value || '').trim() || 'to';
+      const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `Challan_Detail_${fromDate}_to_${toDate}.xls`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    }
+
     async function downloadChallanDispatchPdf(options = {}) {
       if (!session || !session.selectedDatabase) {
         alert('Please login first.');
@@ -2593,6 +2671,12 @@
     if (challanRefreshBtn) {
       challanRefreshBtn.addEventListener('click', async () => {
         await loadChallanDetailRows();
+      });
+    }
+
+    if (challanExportExcelBtn) {
+      challanExportExcelBtn.addEventListener('click', () => {
+        exportChallanDetailExcel();
       });
     }
 
