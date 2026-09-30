@@ -217,8 +217,7 @@
     const challanFromDateInput = document.getElementById('challan-from-date');
     const challanToDateInput = document.getElementById('challan-to-date');
     const challanRefreshBtn = document.getElementById('btn-challan-refresh');
-    const challanExportExcelBtn = document.getElementById('btn-challan-export-excel');
-    const challanExportPdfBtn = document.getElementById('btn-challan-export-pdf');
+    const challanDownloadExcelBtn = document.getElementById('btn-challan-download-excel');
     const challanDownloadPdfBtn = document.getElementById('btn-challan-download-pdf');
     const filterChallanDnNo = document.getElementById('filter-challan-dn-no');
     const filterChallanDnDate = document.getElementById('filter-challan-dn-date');
@@ -1279,7 +1278,9 @@
     }
 
     function updateChallanDetailDownloadButton() {
-      // Download PDF stays visible; click still requires a selected row.
+      const hasSelection = Boolean(getChallanDetailSelectedRow()?.deliveryNoteNo);
+      if (challanDownloadPdfBtn) challanDownloadPdfBtn.classList.toggle('hidden', !hasSelection);
+      if (challanDownloadExcelBtn) challanDownloadExcelBtn.classList.toggle('hidden', !hasSelection);
     }
 
     function clearChallanDetailSelection() {
@@ -1551,193 +1552,20 @@
       }
     }
 
-    function escapeXml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function excelCell(value, type = 'String') {
-      if (value == null || value === '') {
-        return '<Cell><Data ss:Type="String"></Data></Cell>';
-      }
-      if (type === 'Number' && Number.isFinite(Number(value))) {
-        return `<Cell><Data ss:Type="Number">${Number(value)}</Data></Cell>`;
-      }
-      return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
-    }
-
-    function getChallanExportRows() {
-      const rows = getFilteredChallanDetailRows(challanDetailRows);
-      if (!rows.length) {
-        alert('No challan records to export. Refresh or adjust filters first.');
-        return null;
-      }
-      return rows;
-    }
-
-    function getChallanExportDateRangeLabel() {
-      const fromDate = String(challanFromDateInput?.value || '').trim() || 'from';
-      const toDate = String(challanToDateInput?.value || '').trim() || 'to';
-      return { fromDate, toDate };
-    }
-
-    function mapChallanRowToExportValues(row) {
-      return {
-        deliveryNoteNo: row.deliveryNoteNo ?? '',
-        deliveryNoteDate: row.deliveryNoteDate ? formatVoucherDate(row.deliveryNoteDate) : '',
-        clientName: row.clientName ?? '',
-        jobBookingNo: row.jobBookingNo ?? '',
-        poDate: row.poDate ? formatVoucherDate(row.poDate) : '',
-        totalDeliveredCartons: row.totalDeliveredCartons == null ? '' : row.totalDeliveredCartons,
-        totalQty: row.totalQty == null ? '' : row.totalQty,
-        jobDeliveredCarton: row.jobDeliveredCarton == null ? '' : row.jobDeliveredCarton,
-        jobQty: row.jobQty == null ? '' : row.jobQty
-      };
-    }
-
-    function exportChallanDetailExcel() {
-      const rows = getChallanExportRows();
-      if (!rows) return;
-
-      const headers = [
-        'Delivery Note No.',
-        'Delivery Note Date',
-        'Client Name',
-        'Job Booking No.',
-        'PO Date',
-        'Total Delivrd Cartons',
-        'Total Qty',
-        'Job Delivered Carton',
-        'Job Qty'
-      ];
-
-      const headerRow = `<Row>${headers.map((h) => excelCell(h)).join('')}</Row>`;
-      const dataRows = rows.map((row) => {
-        const cells = [
-          excelCell(row.deliveryNoteNo ?? ''),
-          excelCell(row.deliveryNoteDate ? formatVoucherDate(row.deliveryNoteDate) : ''),
-          excelCell(row.clientName ?? ''),
-          excelCell(row.jobBookingNo ?? ''),
-          excelCell(row.poDate ? formatVoucherDate(row.poDate) : ''),
-          excelCell(row.totalDeliveredCartons, 'Number'),
-          excelCell(row.totalQty, 'Number'),
-          excelCell(row.jobDeliveredCarton, 'Number'),
-          excelCell(row.jobQty, 'Number')
-        ];
-        return `<Row>${cells.join('')}</Row>`;
-      }).join('');
-
-      const xml = [
-        '<?xml version="1.0"?>',
-        '<?mso-application progid="Excel.Sheet"?>',
-        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
-        ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">',
-        '<Worksheet ss:Name="Challan Detail">',
-        `<Table>${headerRow}${dataRows}</Table>`,
-        '</Worksheet>',
-        '</Workbook>'
-      ].join('');
-
-      const fromDate = String(challanFromDateInput?.value || '').trim() || 'from';
-      const toDate = String(challanToDateInput?.value || '').trim() || 'to';
-      const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `Challan_Detail_${fromDate}_to_${toDate}.xls`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
-    }
-
-    function exportChallanDetailPdf() {
-      const rows = getChallanExportRows();
-      if (!rows) return;
-
-      const { fromDate, toDate } = getChallanExportDateRangeLabel();
-      const headerCells = [
-        'Delivery Note No.',
-        'Delivery Note Date',
-        'Client Name',
-        'Job Booking No.',
-        'PO Date',
-        'Total Delivrd Cartons',
-        'Total Qty',
-        'Job Delivered Carton',
-        'Job Qty'
-      ].map((h) => `<th>${escapeXml(h)}</th>`).join('');
-
-      const bodyRows = rows.map((row) => {
-        const values = mapChallanRowToExportValues(row);
-        return `<tr>
-          <td>${escapeXml(values.deliveryNoteNo)}</td>
-          <td>${escapeXml(values.deliveryNoteDate)}</td>
-          <td>${escapeXml(values.clientName)}</td>
-          <td>${escapeXml(values.jobBookingNo)}</td>
-          <td>${escapeXml(values.poDate)}</td>
-          <td>${escapeXml(values.totalDeliveredCartons)}</td>
-          <td>${escapeXml(values.totalQty)}</td>
-          <td>${escapeXml(values.jobDeliveredCarton)}</td>
-          <td>${escapeXml(values.jobQty)}</td>
-        </tr>`;
-      }).join('');
-
-      const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <title>Challan Detail ${fromDate} to ${toDate}</title>
-  <style>
-    @page { size: A4 landscape; margin: 12mm; }
-    body { font-family: Arial, sans-serif; color: #111827; margin: 0; }
-    h1 { font-size: 18px; margin: 0 0 4px; }
-    p { font-size: 12px; margin: 0 0 12px; color: #4b5563; }
-    table { width: 100%; border-collapse: collapse; font-size: 10px; }
-    th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: left; }
-    th { background: #e2e8f0; font-weight: 700; }
-    tr:nth-child(even) td { background: #f8fafc; }
-  </style>
-</head>
-<body>
-  <h1>Challan Detail</h1>
-  <p>From ${escapeXml(fromDate)} to ${escapeXml(toDate)} • ${rows.length} record(s)</p>
-  <table>
-    <thead><tr>${headerCells}</tr></thead>
-    <tbody>${bodyRows}</tbody>
-  </table>
-</body>
-</html>`;
-
-      const printWindow = window.open('', '_blank', 'width=1200,height=800');
-      if (!printWindow) {
-        alert('Please allow pop-ups to export PDF.');
-        return;
-      }
-      printWindow.document.open();
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => {
-        printWindow.print();
-      }, 300);
-    }
-
-    async function downloadChallanDispatchPdf(options = {}) {
+    async function downloadChallanDispatchFile(format, options = {}) {
+      const isExcel = format === 'excel';
       if (!session || !session.selectedDatabase) {
         alert('Please login first.');
         return;
       }
-      const triggerButton = options.triggerButton || challanDownloadPdfBtn;
+      const triggerButton = options.triggerButton
+        || (isExcel ? challanDownloadExcelBtn : challanDownloadPdfBtn);
       const errorElement = options.errorElement != null ? options.errorElement : challanDetailError;
       const voucherNo = options.voucherNo
         || challanUpdateContext?.deliveryNoteNo
         || getChallanDetailSelectedRow()?.deliveryNoteNo;
       if (!voucherNo) {
-        alert('Missing delivery note number.');
+        alert('Select a delivery note row first.');
         return;
       }
 
@@ -1745,7 +1573,7 @@
       if (errorElement) errorElement.textContent = '';
       try {
         const base = getApiBaseUrl();
-        const url = new URL('grn/delivery-note-dispatch-pdf', base);
+        const url = new URL(isExcel ? 'grn/delivery-note-dispatch-excel' : 'grn/delivery-note-dispatch-pdf', base);
         url.searchParams.set('database', session.selectedDatabase);
         url.searchParams.set('voucherNo', String(voucherNo));
         url.searchParams.set('username', String(session.username || ''));
@@ -1756,7 +1584,7 @@
         });
         if (!res.ok) {
           const t = await res.text().catch(() => '');
-          let message = t || 'Failed to download PDF';
+          let message = t || (isExcel ? 'Failed to download Excel' : 'Failed to download PDF');
           try {
             const parsed = JSON.parse(t);
             if (parsed?.error) message = parsed.error;
@@ -1769,7 +1597,8 @@
         const objectUrl = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = objectUrl;
-        link.download = `Dispatch_${String(voucherNo).replace(/[^\w.-]+/g, '_')}.pdf`;
+        const safeName = String(voucherNo).replace(/[^\w.-]+/g, '_');
+        link.download = `Dispatch_${safeName}.${isExcel ? 'xls' : 'pdf'}`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1781,6 +1610,10 @@
       } finally {
         setButtonLoading(triggerButton, false);
       }
+    }
+
+    async function downloadChallanDispatchPdf(options = {}) {
+      return downloadChallanDispatchFile('pdf', options);
     }
 
     async function saveChallanUpdateDetails() {
@@ -2771,27 +2604,22 @@
       });
     }
 
-    if (challanExportExcelBtn) {
-      challanExportExcelBtn.addEventListener('click', () => {
-        exportChallanDetailExcel();
-      });
-    }
-
-    if (challanExportPdfBtn) {
-      challanExportPdfBtn.addEventListener('click', () => {
-        exportChallanDetailPdf();
+    if (challanDownloadExcelBtn) {
+      challanDownloadExcelBtn.addEventListener('click', () => {
+        const selectedRow = getChallanDetailSelectedRow();
+        downloadChallanDispatchFile('excel', {
+          voucherNo: selectedRow?.deliveryNoteNo,
+          triggerButton: challanDownloadExcelBtn,
+          errorElement: challanDetailError
+        });
       });
     }
 
     if (challanDownloadPdfBtn) {
       challanDownloadPdfBtn.addEventListener('click', () => {
         const selectedRow = getChallanDetailSelectedRow();
-        if (!selectedRow?.deliveryNoteNo) {
-          alert('Select a delivery note row first to download its dispatch PDF.');
-          return;
-        }
         downloadChallanDispatchPdf({
-          voucherNo: selectedRow.deliveryNoteNo,
+          voucherNo: selectedRow?.deliveryNoteNo,
           triggerButton: challanDownloadPdfBtn,
           errorElement: challanDetailError
         });
